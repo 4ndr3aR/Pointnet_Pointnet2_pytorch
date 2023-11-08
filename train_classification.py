@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Author: Benny
 Date: Nov 2019
@@ -18,6 +19,8 @@ import argparse
 from pathlib import Path
 from tqdm import tqdm
 from data_utils.ModelNetDataLoader import ModelNetDataLoader
+
+from data_utils.3dmnist_dataset import MNIST3D, create_3dmnist_dataloaders, show_3d_image
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
@@ -115,6 +118,27 @@ def main(args):
     log_string(args)
 
     '''DATA LOADING'''
+    log_string('Loading the 3D MNIST dataset...')
+
+    train_dataloader, val_dataloader, test_dataloader = create_3dmnist_dataloaders()
+
+    '''
+    train_dataset = MNIST(root='./data/MNIST', download=True, train=True)
+    test_dataset = MNIST(root='./data/MNIST', download=True, train=False)
+    dataset = torch.utils.data.ConcatDataset([train_dataset, test_dataset])
+    
+    dataset_3d = MNIST3D(dataset, number_of_points)
+    l_data = len(dataset_3d)
+    train_dataset, val_dataset, test_dataset = random_split(dataset_3d,
+                                              [round(0.8*l_data), round(0.1*l_data), round(0.1*l_data)],
+                                              generator=torch.Generator().manual_seed(1))
+    
+    train_dataloader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=128, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=128, shuffle=False)
+    '''
+
+    '''
     log_string('Load dataset ...')
     data_path = 'data/modelnet40_normal_resampled/'
 
@@ -122,6 +146,7 @@ def main(args):
     test_dataset = ModelNetDataLoader(root=data_path, args=args, split='test', process_data=args.process_data)
     trainDataLoader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=10, drop_last=True)
     testDataLoader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=10)
+    '''
 
     '''MODEL LOADING'''
     num_class = args.num_category
