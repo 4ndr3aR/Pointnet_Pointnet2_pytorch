@@ -18,18 +18,22 @@ import matplotlib.pyplot as plt
 
 from .mnist_dataset import transform_img2pc, show_3d_image, get_random_sample, show_number_of_points_histogram
 
-def load_dataset(path, fname):
+def load_dataset(path, fname, debug=False):
 	data = None
 	if Path(Path(path) / fname).is_file() and Path(fname).suffix == '.xz':
-		print(f'Reading LZMA compressed dataset...')
+		if debug:
+			print(f'Reading LZMA compressed dataset...')
 		with lzma.open(Path(path) / Path(str(fname)), 'rb') as fhandle:
 			data = pickle.load(fhandle)
-			print(f'Read {len(data)} samples - {type(data[0]) = } - {len(data[0]) = } - {data[0][0].shape = } - {data[0][1] = } - {data[0][2] = }')
+			if debug:
+				print(f'Read {len(data)} samples - {type(data[0]) = } - {len(data[0]) = } - {data[0][0].shape = } - {data[0][1] = } - {data[0][2] = }')
 	else:
-		print(f'Reading uncompressed dataset...')
+		if debug:
+			print(f'Reading uncompressed dataset...')
 		with open(Path(path) / Path(str(fname)), 'rb') as fhandle:
 			data = pickle.load(fhandle)
-			print(f'Read {len(data)} samples - {type(data[0]) = } - {len(data[0]) = } - {data[0][0].shape = } - {data[0][1] = } - {data[0][2] = }')
+			if debug:
+				print(f'Read {len(data)} samples - {type(data[0]) = } - {len(data[0]) = } - {data[0][0].shape = } - {data[0][1] = } - {data[0][2] = }')
 	return data
 
 class CurveML(Dataset):
@@ -158,16 +162,30 @@ def save_dataset_partitions(dataset_path):
 	save_dataset(train_list, './', 'training')
 	return train_list, valid_list, test_list
 
-def create_curveml_dataloaders(curveml_path, bs):
-	#train_dataset = CurveML(path=curveml_path, partition='training')
-	#valid_dataset = CurveML(path=curveml_path, partition='validation')
+def create_curveml_dataloaders(curveml_path, bs, only_test_set=False):
+	train_dataloader, val_dataloader, test_dataloader = None, None, None
+
+	print('.', end='', flush=True)
 	test_dataset  = CurveML(path=curveml_path, partition='test')
 
-	#train_dataloader = DataLoader(train_dataset, batch_size=bs, shuffle=True)
-	#val_dataloader   = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
-	test_dataloader  = DataLoader(test_dataset,  batch_size=bs, shuffle=True)
-	train_dataloader = test_dataloader
-	val_dataloader   = test_dataloader
+	if not only_test_set:
+		print('.', end='', flush=True)
+		valid_dataset = CurveML(path=curveml_path, partition='validation')
+		print('.', end='', flush=True)
+		train_dataset = CurveML(path=curveml_path, partition='training')		# keep this one as the last because it's pretty slow
+	else:
+		print(f'Warning: using only test set for dataloaders...')
+
+	print('. DONE!', flush=True)
+
+	if not only_test_set:
+		train_dataloader = DataLoader(train_dataset, batch_size=bs, shuffle=True)
+		val_dataloader   = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
+	test_dataloader  = DataLoader(test_dataset,  batch_size=bs, shuffle=only_test_set)
+
+	if only_test_set:
+		train_dataloader = test_dataloader
+		val_dataloader   = test_dataloader
 
 	return train_dataloader, val_dataloader, test_dataloader
 

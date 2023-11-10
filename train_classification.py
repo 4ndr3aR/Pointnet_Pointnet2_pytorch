@@ -51,6 +51,7 @@ def parse_args():
     parser.add_argument('--mnist_dataset', action='store_true', default=False, help='use the 3D MNIST dataset')
     parser.add_argument('--curveml_dataset', action='store_true', default=False, help='use the CurveML dataset')
     parser.add_argument('--show_one_batch', action='store_true', default=False, help='show one batch before start training')
+    parser.add_argument('--only_test_set', action='store_true', default=False, help='only use test set for a very quick run (perfect to see if the model is learning)')
     return parser.parse_args()
 
 
@@ -134,7 +135,7 @@ def main(args):
     elif args.curveml_dataset:
         log_string('Loading the CurveML dataset...')
         curveml_path = Path('./data/CurveML')
-        trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(curveml_path, bs=args.batch_size)
+        trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(curveml_path, bs=args.batch_size, only_test_set=args.only_test_set)
 
     print(f'trainDataLoader size: {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
 
