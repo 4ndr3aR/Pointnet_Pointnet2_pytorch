@@ -230,7 +230,7 @@ def main(args):
         log_string('Train Instance Accuracy: %f' % train_instance_acc)
 
         with torch.no_grad():
-            instance_acc, class_acc = test(classifier.eval(), testDataLoader, num_class=num_class)
+            instance_acc, class_acc = test(classifier.eval(), valDataLoader, num_class=num_class)
 
             if (instance_acc >= best_instance_acc):
                 best_instance_acc = instance_acc
