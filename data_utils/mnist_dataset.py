@@ -17,7 +17,19 @@ def transform_img2pc(img):
 def show_3d_image(img, label):
 	#pc  = train_dataset[5][0].numpy()
 	#lbl = train_dataset[5][1]
-	pc  = img.numpy()
+	pc  = img
+	print(f'Showing image: {pc.shape}')
+	if type(pc) != np.ndarray:
+		pc  = img.numpy()
+	#print(f'BEFORE: {pc}')
+	if pc.shape[1] == 2:
+		#pc[:,:-1] = 0
+		'''
+		rand_z = np.random.random() * 2. - 1.
+		pc = np.hstack((pc, np.full((pc.shape[0], 1), rand_z)))
+		'''
+		pc = np.hstack((pc, np.zeros((pc.shape[0], 1))))
+	#print(f'AFTER : {pc}')
 	lbl = label
 	fig = plt.figure(figsize=[7,7])
 	ax  = plt.axes(projection='3d')
