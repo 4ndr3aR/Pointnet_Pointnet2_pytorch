@@ -142,42 +142,51 @@ class CurveML(Dataset):
 	'''
 
 	NUM_CLASSIFICATION_CLASSES = 8
-	POINT_DIMENSION = 3
+	#POINT_DIMENSION = 3
 	MAX_POINTS = 400
 
 	def __init__(self, path, partition, max_points=MAX_POINTS):
 		self.path = path
-		self.max_points = MAX_POINTS
-		self.dataset = None
+		self.max_points = max_points
+		#self.dataset = None
 		self.dataset = load_dataset(path, partition + '.xz')
 
 	def __len__(self):
 		return len(self.dataset)
 
-	def __getitem__(self, idx):
-		img,label = self.dataset[idx]
-		pc = transform_img2pc(img)
-		print(f'Read {len(data)} samples - {type(data[0]) = } - {len(data[0]) = } - {data[0][0].shape = } - {data[0][1] = } - {data[0][2] = }')
-		pc = np.hstack((pc, np.zeros((pc.shape[0], 1))))
+	def __getitem__(self, idx, debug=False):
+		points,label,fpath = self.dataset[idx]
+		if debug:
+			print(f'__getitem__() idx: {idx} - {type(self.dataset[idx]) = } - {len(self.dataset[idx]) = } - {points.shape = } - {label = } - {fpath = }')
+		points = np.hstack((points, np.zeros((points.shape[0], 1))))
+		if debug:
+			print(f'__getitem__() idx: {idx} - {type(self.dataset[idx]) = } - {len(self.dataset[idx]) = } - {points.shape = } - {label = } - {fpath = }')
 
-		if self.max_points-pc.shape[0]>0:
+
+		if self.max_points - points.shape[0] > 0:
 			# Duplicate points
-			sampling_indices = np.random.choice(pc.shape[0], self.max_points-pc.shape[0])
-			new_points = pc[sampling_indices, :]
-			pc = np.concatenate((pc, new_points),axis=0)
+			sampling_indices = np.random.choice(points.shape[0], self.max_points - points.shape[0])
+			if debug:
+				print(f'__getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
+			new_points = points[sampling_indices, : ]
+			points = np.concatenate((points, new_points), axis=0)
 		else:
 			# sample points
-			sampling_indices = np.random.choice(pc.shape[0], self.max_points)
-			pc = pc[sampling_indices, :]
+			sampling_indices = np.random.choice(points.shape[0], self.max_points)
+			if debug:
+				print(f'__getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
+			points = points[sampling_indices, :]
 
+		'''
 		pc = pc.astype(np.float32)
 		# add z
 		noise = np.random.normal(0,0.05,len(pc))
 		noise = np.expand_dims(noise, 1)
 		pc = np.hstack([pc, noise]).astype(np.float32)
 		pc = torch.tensor(pc)
+		'''
 
-		return pc, label
+		return points, label
 
 def read_curveml_dataset(path):
 	dataset = []
@@ -221,10 +230,9 @@ def save_dataset_partitions(dataset_path):
 	save_dataset(train_list, './', 'training')
 	return train_list, valid_list, test_list
 
-def create_curveml_dataloaders(bs):
-	curveml_path = Path('/tmp/geometric-primitives-classification/geometric-primitives-dataset-v1.0-wo-splines')
-	train_dataset = CurveML(path=curveml_path, partition='training')
-	valid_dataset = CurveML(path=curveml_path, partition='validation')
+def create_curveml_dataloaders(curveml_path, bs):
+	#train_dataset = CurveML(path=curveml_path, partition='training')
+	#valid_dataset = CurveML(path=curveml_path, partition='validation')
 	test_dataset  = CurveML(path=curveml_path, partition='test')
 	'''
 	dataset = torch.utils.data.ConcatDataset([train_dataset, test_dataset])
@@ -238,34 +246,56 @@ def create_curveml_dataloaders(bs):
                                           generator=torch.Generator().manual_seed(1))
 	'''
 
-	train_dataloader = DataLoader(train_dataset, batch_size=bs, shuffle=True)
-	val_dataloader   = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
-	test_dataloader  = DataLoader(test_dataset,  batch_size=bs, shuffle=False)
+	#train_dataloader = DataLoader(train_dataset, batch_size=bs, shuffle=True)
+	#val_dataloader   = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
+	test_dataloader  = DataLoader(test_dataset,  batch_size=bs, shuffle=True)
+	train_dataloader = test_dataloader
+	val_dataloader   = test_dataloader
 
 	return train_dataloader, val_dataloader, test_dataloader
 
 if __name__ == '__main__':
 
-	#im = cv2.imread("curveml-test.png",mode='RGB')
-	#print(f'{im.shape = }')
+	test_load      = False
+	test_show      = False
+	test_one_batch = True
 
-	dataset_path = Path('/tmp/geometric-primitives-classification/geometric-primitives-dataset-v1.0-wo-splines')
-	#save_dataset_partitions(dataset_path)
-	test_data = load_dataset('./', 'test.xz')
-	sys.exit()
+	if test_load:
+		dataset_path = Path('/tmp/geometric-primitives-classification/geometric-primitives-dataset-v1.0-wo-splines')
+		#save_dataset_partitions(dataset_path)
+		test_data = load_dataset('./', 'test.xz')
+		sys.exit()
 
-	srcdir = Path('curveml-train-geom-petal-036142')
-	points = genfromtxt(srcdir / 'point_cloud_clean.csv', delimiter=',')
-	show_3d_image(points, 'geom-petal')
-	points = genfromtxt(srcdir / 'point_cloud.csv', delimiter=',')
-	show_3d_image(points, 'geom-petal')
+	if test_show:
+		srcdir = Path('curveml-train-geom-petal-036142')
+		points = genfromtxt(srcdir / 'point_cloud_clean.csv', delimiter=',')
+		show_3d_image(points, 'geom-petal')
+		points = genfromtxt(srcdir / 'point_cloud.csv', delimiter=',')
+		show_3d_image(points, 'geom-petal')
 
-	srcdir = Path('curveml-test-cassinian-oval-027194')
-	points = genfromtxt(srcdir / 'point_cloud_clean.csv', delimiter=',')
-	show_3d_image(points, 'cassinian-oval')
-	points = genfromtxt(srcdir / 'point_cloud.csv', delimiter=',')
-	show_3d_image(points, 'cassinian-oval')
+		srcdir = Path('curveml-test-cassinian-oval-027194')
+		points = genfromtxt(srcdir / 'point_cloud_clean.csv', delimiter=',')
+		show_3d_image(points, 'cassinian-oval')
+		points = genfromtxt(srcdir / 'point_cloud.csv', delimiter=',')
+		show_3d_image(points, 'cassinian-oval')
 
+	if test_one_batch:
+		#curveml_path = Path('/tmp/geometric-primitives-classification/geometric-primitives-dataset-v1.0-wo-splines')
+		curveml_path = Path('./')
+		trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(curveml_path, bs=128)
+
+		one_batch = next(iter(testDataLoader))
+		print(f'one_batch: {type(one_batch)}')
+		print(f'one_batch: {len(one_batch)}')
+		print(f'one_batch: {type(one_batch[0])}')
+		print(f'one_batch: {one_batch[0].shape}')
+		print(f'one_batch: {type(one_batch[1])}')
+		print(f'one_batch: {one_batch[1]}')
+		for idx in range(len(one_batch[0])):
+			points = one_batch[0][idx]
+			label  = one_batch[1][idx]
+			print(f'Points shape: {points.shape} - label: {label}')
+			show_3d_image(points, label)
 
 	'''
 	#show_number_of_points_histogram()
