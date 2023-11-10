@@ -52,11 +52,12 @@ class CurveML(Dataset):
 
 	LABELS = ['cassinian-oval', 'cissoid', 'citrus', 'egg', 'geom-petal', 'hypocycloid', 'mouth', 'spiral']
 
-	def __init__(self, path, partition, max_points=MAX_POINTS, labels=LABELS):
-		self.path = path
-		self.labels = labels
+	def __init__(self, path, partition, max_points=MAX_POINTS, labels=LABELS, add_noise=False):
+		self.path       = path
+		self.labels     = labels
+		self.add_noise  = add_noise
 		self.max_points = max_points
-		self.dataset = load_dataset(path, partition + '.xz')
+		self.dataset    = load_dataset(path, partition + '.xz')
 
 	def __len__(self):
 		return len(self.dataset)
@@ -88,8 +89,35 @@ class CurveML(Dataset):
 
 		points = points.astype(np.float32)
 		points = torch.tensor(points)
+		if self.add_noise:
+			#points = points + (0.01**0.5)*torch.randn(points.shape[0], points.shape[1])		# high
+			points = points + (0.001**0.5)*torch.randn(points.shape[0], points.shape[1])		# perfect
 
 		return points, lbl
+
+def show_one_batch(one_batch):
+	print(f'one_batch: {type(one_batch)}')
+	print(f'one_batch: {len(one_batch)}')
+
+	if type(one_batch) == list:
+		print(f'one_batch: {type(one_batch[0])}')
+		print(f'one_batch: {one_batch[0].shape}')
+		print(f'one_batch: {type(one_batch[1])}')
+		print(f'one_batch: {one_batch[1]}')
+		for idx in range(len(one_batch[0])):
+			points = one_batch[0][idx]
+			label  = one_batch[1][idx]
+			print(f'Points shape: {points.shape} - label: {label}')
+			show_3d_image(points, label)
+	elif type(one_batch) == torch.Tensor:
+		print(f'one_batch: {one_batch.shape}')
+		for idx in range(len(one_batch)):
+			points = one_batch[idx]
+			label  = one_batch[idx]
+			print(f'Points shape: {points.shape} - label: {label}')
+			show_3d_image(points, label)
+	else:
+		print(f'Unknown type: {type(one_batch)}')
 
 def read_curveml_dataset(path):
 	dataset = []
@@ -137,11 +165,12 @@ def create_curveml_dataloaders(curveml_path, bs):
 
 	#train_dataloader = DataLoader(train_dataset, batch_size=bs, shuffle=True)
 	#val_dataloader   = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
-	test_dataloader  = DataLoader(test_dataset,  batch_size=bs, shuffle=False)
+	test_dataloader  = DataLoader(test_dataset,  batch_size=bs, shuffle=True)
 	train_dataloader = test_dataloader
 	val_dataloader   = test_dataloader
 
 	return train_dataloader, val_dataloader, test_dataloader
+
 
 if __name__ == '__main__':
 
@@ -174,17 +203,7 @@ if __name__ == '__main__':
 		trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(curveml_path, bs=128)
 
 		one_batch = next(iter(testDataLoader))
-		print(f'one_batch: {type(one_batch)}')
-		print(f'one_batch: {len(one_batch)}')
-		print(f'one_batch: {type(one_batch[0])}')
-		print(f'one_batch: {one_batch[0].shape}')
-		print(f'one_batch: {type(one_batch[1])}')
-		print(f'one_batch: {one_batch[1]}')
-		for idx in range(len(one_batch[0])):
-			points = one_batch[0][idx]
-			label  = one_batch[1][idx]
-			print(f'Points shape: {points.shape} - label: {label}')
-			show_3d_image(points, label)
+		show_one_batch(one_batch)
 
 
 

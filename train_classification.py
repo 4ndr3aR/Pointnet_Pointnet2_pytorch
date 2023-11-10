@@ -25,7 +25,7 @@ from torchinfo import summary
 from data_utils.ModelNetDataLoader import ModelNetDataLoader
 
 from data_utils.mnist_dataset   import MNIST3D, create_3dmnist_dataloaders, show_3d_image, get_random_sample
-from data_utils.curveml_dataset import CurveML, create_curveml_dataloaders
+from data_utils.curveml_dataset import CurveML, create_curveml_dataloaders, show_one_batch
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
@@ -50,6 +50,7 @@ def parse_args():
     parser.add_argument('--use_uniform_sample', action='store_true', default=False, help='use uniform sampiling')
     parser.add_argument('--mnist_dataset', action='store_true', default=False, help='use the 3D MNIST dataset')
     parser.add_argument('--curveml_dataset', action='store_true', default=False, help='use the CurveML dataset')
+    parser.add_argument('--show_one_batch', action='store_true', default=False, help='show one batch before start training')
     return parser.parse_args()
 
 
@@ -159,9 +160,13 @@ def main(args):
 
     # take a look at what you're training...
     img, lbl = get_random_sample(trainDataLoader.dataset)
-    one_batch = next(iter(trainDataLoader))[0]
-    print(f'one_batch: {one_batch.shape}')
-    summary(classifier, input_data=torch.transpose(one_batch, 1, 2).cuda())
+    one_batch = next(iter(trainDataLoader))
+    print(f'one_batch: {len(one_batch)} - {one_batch[0].shape}')
+    one_batch_data  = one_batch[0]
+    one_batch_label = one_batch[1]
+    summary(classifier, input_data=torch.transpose(one_batch_data, 1, 2).cuda())
+    if args.show_one_batch:
+        show_one_batch([one_batch_data, one_batch_label])
 
     try:
         checkpoint = torch.load(str(exp_dir) + '/checkpoints/best_model.pth')
