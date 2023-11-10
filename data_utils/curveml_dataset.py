@@ -32,101 +32,6 @@ def load_dataset(path, fname):
 			print(f'Read {len(data)} samples - {type(data[0]) = } - {len(data[0]) = } - {data[0][0].shape = } - {data[0][1] = } - {data[0][2] = }')
 	return data
 
-'''
-def transform_img2pc(img):
-    img_array = np.asarray(img)
-    indices = np.argwhere(img_array > 127)
-    return indices.astype(np.float32)
-
-def show_3d_image(img, label):
-	#pc  = train_dataset[5][0].numpy()
-	#lbl = train_dataset[5][1]
-	pc  = img.numpy()
-	lbl = label
-	fig = plt.figure(figsize=[7,7])
-	ax  = plt.axes(projection='3d')
-	sc  = ax.scatter(pc[:,0], pc[:,1], pc[:,2], c=pc[:,0] ,s=80, marker='o', cmap="viridis", alpha=0.7)
-	ax.set_zlim3d(-1, 1)
-	plt.title(f'Label: {lbl}')
-	plt.show()
-
-def show_number_of_points_histogram():
-	dataset = MNIST(root='./data', train=True, download=True)
-	len_points = []
-	# loop over samples
-	for idx in range(len(dataset)):
-		img,label = dataset[idx]
-		pc = transform_img2pc(img)
-		len_points.append(len(pc))
-    
-	h = plt.hist(len_points)
-	plt.title('Histogram of amount of points per number')
-	plt.show()								# this shows us that the number of points should be 200
-
-def create_3dmnist_dataloaders(bs):
-	train_dataset = MNIST(root='./data/MNIST', download=True, train=True)
-	test_dataset  = MNIST(root='./data/MNIST', download=True, train=False)
-	dataset = torch.utils.data.ConcatDataset([train_dataset, test_dataset])
-
-	number_of_points = 200
-
-	dataset_3d = MNIST3D(dataset, number_of_points)
-	l_data = len(dataset_3d)
-	train_dataset, val_dataset, test_dataset = random_split(dataset_3d,
-                                          [round(0.8*l_data), round(0.1*l_data), round(0.1*l_data)],
-                                          generator=torch.Generator().manual_seed(1))
-
-	train_dataloader = DataLoader(train_dataset, batch_size=bs, shuffle=True)
-	val_dataloader   = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
-	test_dataloader  = DataLoader(test_dataset,  batch_size=bs, shuffle=False)
-
-	return train_dataloader, val_dataloader, test_dataloader
-
-def get_random_sample(dataset):
-	random_index  = int(np.random.random() * len(dataset))
-	random_sample = dataset[random_index]
-	img, label    = random_sample[0], random_sample[1]
-	print(f'img shape: {img.shape} - label: {label}')
-	return img, label
-
-class MNIST3D(Dataset):
-    """3D MNIST dataset."""
-    
-    NUM_CLASSIFICATION_CLASSES = 10
-    POINT_DIMENSION = 3
-
-    def __init__(self, dataset, num_points):
-        self.dataset = dataset
-        self.number_of_points = num_points
-
-    def __len__(self):
-        return len(self.dataset)
-
-    def __getitem__(self, idx):
-
-        img,label = self.dataset[idx]
-        pc = transform_img2pc(img)
-        
-        if self.number_of_points-pc.shape[0]>0:
-            # Duplicate points
-            sampling_indices = np.random.choice(pc.shape[0], self.number_of_points-pc.shape[0])
-            new_points = pc[sampling_indices, :]
-            pc = np.concatenate((pc, new_points),axis=0)
-        else:
-            # sample points
-            sampling_indices = np.random.choice(pc.shape[0], self.number_of_points)
-            pc = pc[sampling_indices, :]
-            
-        pc = pc.astype(np.float32)
-        # add z
-        noise = np.random.normal(0,0.05,len(pc))
-        noise = np.expand_dims(noise, 1)
-        pc = np.hstack([pc, noise]).astype(np.float32)
-        pc = torch.tensor(pc)
-        
-        return pc, label
-'''
-
 class CurveML(Dataset):
 	"""CurveML dataset."""
 
@@ -145,12 +50,12 @@ class CurveML(Dataset):
 	#POINT_DIMENSION = 3
 	MAX_POINTS = 400
 
-	self.labels = ['cassinian-oval', 'cissoid', 'citrus', 'egg', 'geom-petal', 'hypocycloid', 'mouth', 'spiral']
+	LABELS = ['cassinian-oval', 'cissoid', 'citrus', 'egg', 'geom-petal', 'hypocycloid', 'mouth', 'spiral']
 
-	def __init__(self, path, partition, max_points=MAX_POINTS):
+	def __init__(self, path, partition, max_points=MAX_POINTS, labels=LABELS):
 		self.path = path
+		self.labels = labels
 		self.max_points = max_points
-		#self.dataset = None
 		self.dataset = load_dataset(path, partition + '.xz')
 
 	def __len__(self):
@@ -181,14 +86,8 @@ class CurveML(Dataset):
 				print(f'__getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
 			points = points[sampling_indices, :]
 
-		'''
-		pc = pc.astype(np.float32)
-		# add z
-		noise = np.random.normal(0,0.05,len(pc))
-		noise = np.expand_dims(noise, 1)
-		pc = np.hstack([pc, noise]).astype(np.float32)
-		pc = torch.tensor(pc)
-		'''
+		points = points.astype(np.float32)
+		points = torch.tensor(points)
 
 		return points, lbl
 
@@ -202,7 +101,6 @@ def read_curveml_dataset(path):
 
 	csv_files = Path(path).rglob('point_cloud*.csv')
 	for idx, file in enumerate(list(csv_files)):
-		#print(f'read_curveml_dataset() - {idx} - {file}')
 		if file.is_file():
 			points = genfromtxt(file, delimiter=',')
 			fpath  = file.parent.stem			# 028676
@@ -211,8 +109,6 @@ def read_curveml_dataset(path):
 			dataset.append((points, label, fpath))
 			if counter % 1000 == 0:
 				print(f'read_curveml_dataset() - {counter} files processed ({fpath} - {label} - {points.shape})')	
-			#if counter % 5000 == 0:
-			#	break
 	print(f'read_curveml_dataset() - {counter} files read')
 
 	return dataset
@@ -238,17 +134,6 @@ def create_curveml_dataloaders(curveml_path, bs):
 	#train_dataset = CurveML(path=curveml_path, partition='training')
 	#valid_dataset = CurveML(path=curveml_path, partition='validation')
 	test_dataset  = CurveML(path=curveml_path, partition='test')
-	'''
-	dataset = torch.utils.data.ConcatDataset([train_dataset, test_dataset])
-
-	number_of_points = 200
-
-	dataset_3d = MNIST3D(dataset, number_of_points)
-	l_data = len(dataset_3d)
-	train_dataset, val_dataset, test_dataset = random_split(dataset_3d,
-                                          [round(0.8*l_data), round(0.1*l_data), round(0.1*l_data)],
-                                          generator=torch.Generator().manual_seed(1))
-	'''
 
 	#train_dataloader = DataLoader(train_dataset, batch_size=bs, shuffle=True)
 	#val_dataloader   = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
@@ -300,23 +185,6 @@ if __name__ == '__main__':
 			label  = one_batch[1][idx]
 			print(f'Points shape: {points.shape} - label: {label}')
 			show_3d_image(points, label)
-
-	'''
-	#show_number_of_points_histogram()
-	train_dataloader, val_dataloader, test_dataloader = create_3dmnist_dataloaders()
-	#img, label = next(iter(train_dataloader))[0], next(iter(train_dataloader))[1]
-
-	#for (image, label) in list(enumerate(train_loader))[:1000]:
-	dataset = train_dataloader.dataset
-
-	#img, label = train_dataloader[2][0], train_dataloader[2][1]
-	print(f'img shape: {img.shape} - label: {label}')
-	show_3d_image(img, label)
-	'''
-
-
-
-
 
 
 

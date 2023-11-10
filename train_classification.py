@@ -137,32 +137,6 @@ def main(args):
 
     print(f'trainDataLoader size: {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
 
-    '''
-    train_dataset = MNIST(root='./data/MNIST', download=True, train=True)
-    test_dataset = MNIST(root='./data/MNIST', download=True, train=False)
-    dataset = torch.utils.data.ConcatDataset([train_dataset, test_dataset])
-    
-    dataset_3d = MNIST3D(dataset, number_of_points)
-    l_data = len(dataset_3d)
-    train_dataset, val_dataset, test_dataset = random_split(dataset_3d,
-                                              [round(0.8*l_data), round(0.1*l_data), round(0.1*l_data)],
-                                              generator=torch.Generator().manual_seed(1))
-    
-    train_dataloader = DataLoader(train_dataset, batch_size=128, shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=128, shuffle=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=128, shuffle=False)
-    '''
-
-    '''
-    log_string('Load dataset ...')
-    data_path = 'data/modelnet40_normal_resampled/'
-
-    train_dataset = ModelNetDataLoader(root=data_path, args=args, split='train', process_data=args.process_data)
-    test_dataset = ModelNetDataLoader(root=data_path, args=args, split='test', process_data=args.process_data)
-    trainDataLoader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=10, drop_last=True)
-    testDataLoader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=10)
-    '''
-
     '''MODEL LOADING'''
     num_class = args.num_category
     model = importlib.import_module(args.model)
@@ -185,15 +159,8 @@ def main(args):
 
     # take a look at what you're training...
     img, lbl = get_random_sample(trainDataLoader.dataset)
-    #summary(classifier, (img.shape[1], img.shape[0]))
-    #summary(classifier, input_data=img)
-    #summary(classifier, input_data=next(iter(trainDataLoader)))
-    #summary(classifier, input_data=[img, img])
-    #summary(classifier, input_data=torch.stack([img, img]))
-    #summary(classifier, input_data=torch.transpose(torch.stack([img, img]), 1, 2).cuda())
     one_batch = next(iter(trainDataLoader))[0]
     print(f'one_batch: {one_batch.shape}')
-    #summary(classifier, input_data=one_batch.cuda())
     summary(classifier, input_data=torch.transpose(one_batch, 1, 2).cuda())
 
     try:
