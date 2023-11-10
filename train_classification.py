@@ -24,8 +24,8 @@ from torchinfo import summary
 
 from data_utils.ModelNetDataLoader import ModelNetDataLoader
 
-from data_utils.mnist_dataset import MNIST3D, create_3dmnist_dataloaders, show_3d_image, get_random_sample
-from data_utils.mnist_dataset import CurveML, create_curveml_dataloaders
+from data_utils.mnist_dataset   import MNIST3D, create_3dmnist_dataloaders, show_3d_image, get_random_sample
+from data_utils.curveml_dataset import CurveML, create_curveml_dataloaders
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument('--gpu', type=str, default='0', help='specify gpu device')
     parser.add_argument('--batch_size', type=int, default=24, help='batch size in training')
     parser.add_argument('--model', default='pointnet_cls', help='model name [default: pointnet_cls]')
-    parser.add_argument('--num_category', default=40, type=int, choices=[10, 40],  help='training on ModelNet10/40')
+    parser.add_argument('--num_category', default=40, type=int, choices=[8, 10, 40],  help='training on ModelNet10/40')
     parser.add_argument('--epoch', default=200, type=int, help='number of epoch in training')
     parser.add_argument('--learning_rate', default=0.001, type=float, help='learning rate in training')
     parser.add_argument('--num_point', type=int, default=1024, help='Point Number')
@@ -48,8 +48,8 @@ def parse_args():
     parser.add_argument('--use_normals', action='store_true', default=False, help='use normals')
     parser.add_argument('--process_data', action='store_true', default=False, help='save data offline')
     parser.add_argument('--use_uniform_sample', action='store_true', default=False, help='use uniform sampiling')
-    parser.add_argument('--3dmnist_dataset', action='store_true', default=True, help='use the 3D MNIST dataset')
-    parser.add_argument('--curveml_dataset', action='store_true', default=True, help='use the CurveML dataset')
+    parser.add_argument('--mnist_dataset', action='store_true', default=False, help='use the 3D MNIST dataset')
+    parser.add_argument('--curveml_dataset', action='store_true', default=False, help='use the CurveML dataset')
     return parser.parse_args()
 
 
@@ -126,15 +126,16 @@ def main(args):
     log_string(args)
 
     '''DATA LOADING'''
-    trainDataLoader, valDataLoader, testDataLoader = None
-    if args.3dmnist_dataset:
+    trainDataLoader, valDataLoader, testDataLoader = None, None, None
+    if args.mnist_dataset:
         log_string('Loading the 3D MNIST dataset...')
         trainDataLoader, valDataLoader, testDataLoader = create_3dmnist_dataloaders(bs=args.batch_size)
-    else if args.curveml_dataset:
-	log_string('Loading the CurveML dataset...')
-	trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(bs=args.batch_size)
+    elif args.curveml_dataset:
+        log_string('Loading the CurveML dataset...')
+        curveml_path = Path('./data/CurveML')
+        trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(curveml_path, bs=args.batch_size)
 
-    print(f'trainDataLoader: {len(trainDataLoader)}, valDataLoader: {len(valDataLoader)}, testDataLoader: {len(testDataLoader)}')
+    print(f'trainDataLoader size: {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
 
     '''
     train_dataset = MNIST(root='./data/MNIST', download=True, train=True)
@@ -167,7 +168,7 @@ def main(args):
     model = importlib.import_module(args.model)
     shutil.copy('./models/%s.py' % args.model, str(exp_dir))
     shutil.copy('models/pointnet2_utils.py', str(exp_dir))
-    if args.3dmnist_dataset:
+    if args.mnist_dataset:
     	shutil.copy('data_utils/mnist_dataset.py', str(exp_dir))
     if args.curveml_dataset:
     	shutil.copy('data_utils/curveml_dataset.py', str(exp_dir))

@@ -16,7 +16,7 @@ from numpy import genfromtxt
 from torch.utils.data import Dataset, DataLoader, random_split
 import matplotlib.pyplot as plt
 
-from mnist_dataset import transform_img2pc, show_3d_image, get_random_sample, show_number_of_points_histogram
+from .mnist_dataset import transform_img2pc, show_3d_image, get_random_sample, show_number_of_points_histogram
 
 def load_dataset(path, fname):
 	data = None
@@ -145,6 +145,8 @@ class CurveML(Dataset):
 	#POINT_DIMENSION = 3
 	MAX_POINTS = 400
 
+	self.labels = ['cassinian-oval', 'cissoid', 'citrus', 'egg', 'geom-petal', 'hypocycloid', 'mouth', 'spiral']
+
 	def __init__(self, path, partition, max_points=MAX_POINTS):
 		self.path = path
 		self.max_points = max_points
@@ -156,11 +158,13 @@ class CurveML(Dataset):
 
 	def __getitem__(self, idx, debug=False):
 		points,label,fpath = self.dataset[idx]
+		lbl = torch.tensor(self.labels.index(label))
+
 		if debug:
-			print(f'__getitem__() idx: {idx} - {type(self.dataset[idx]) = } - {len(self.dataset[idx]) = } - {points.shape = } - {label = } - {fpath = }')
+			print(f'__getitem__() idx: {idx} - {type(self.dataset[idx]) = } - {len(self.dataset[idx]) = } - {points.shape = } - {label = } - {fpath = } - {lbl = }')
 		points = np.hstack((points, np.zeros((points.shape[0], 1))))
 		if debug:
-			print(f'__getitem__() idx: {idx} - {type(self.dataset[idx]) = } - {len(self.dataset[idx]) = } - {points.shape = } - {label = } - {fpath = }')
+			print(f'__getitem__() idx: {idx} - {type(self.dataset[idx]) = } - {len(self.dataset[idx]) = } - {points.shape = } - {label = } - {fpath = } - {lbl = }')
 
 
 		if self.max_points - points.shape[0] > 0:
@@ -186,7 +190,7 @@ class CurveML(Dataset):
 		pc = torch.tensor(pc)
 		'''
 
-		return points, label
+		return points, lbl
 
 def read_curveml_dataset(path):
 	dataset = []
