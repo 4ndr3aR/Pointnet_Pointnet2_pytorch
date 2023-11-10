@@ -163,14 +163,15 @@ def save_dataset_partitions(dataset_path):
 	return train_list, valid_list, test_list
 
 def create_curveml_dataloaders(curveml_path, bs, only_test_set=False):
+	train_dataset,    val_dataset,    test_dataset    = None, None, None
 	train_dataloader, val_dataloader, test_dataloader = None, None, None
 
 	print('.', end='', flush=True)
-	test_dataset  = CurveML(path=curveml_path, partition='test')
+	test_dataset = CurveML(path=curveml_path, partition='test')
 
 	if not only_test_set:
 		print('.', end='', flush=True)
-		valid_dataset = CurveML(path=curveml_path, partition='validation')
+		val_dataset = CurveML(path=curveml_path, partition='validation')
 		print('.', end='', flush=True)
 		train_dataset = CurveML(path=curveml_path, partition='training')		# keep this one as the last because it's pretty slow
 	else:
@@ -181,7 +182,7 @@ def create_curveml_dataloaders(curveml_path, bs, only_test_set=False):
 	if not only_test_set:
 		train_dataloader = DataLoader(train_dataset, batch_size=bs, shuffle=True)
 		val_dataloader   = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
-	test_dataloader  = DataLoader(test_dataset,  batch_size=bs, shuffle=only_test_set)
+	test_dataloader = DataLoader(test_dataset,  batch_size=bs, shuffle=only_test_set)
 
 	if only_test_set:
 		train_dataloader = test_dataloader
