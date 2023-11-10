@@ -248,7 +248,7 @@ def create_curveml_dataloaders(curveml_path, bs):
 
 	#train_dataloader = DataLoader(train_dataset, batch_size=bs, shuffle=True)
 	#val_dataloader   = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
-	test_dataloader  = DataLoader(test_dataset,  batch_size=bs, shuffle=True)
+	test_dataloader  = DataLoader(test_dataset,  batch_size=bs, shuffle=False)
 	train_dataloader = test_dataloader
 	val_dataloader   = test_dataloader
 
