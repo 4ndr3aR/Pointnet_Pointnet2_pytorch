@@ -38,35 +38,44 @@ def parse_args():
     return parser.parse_args()
 
 
-def test(model, loader, num_class=40, vote_num=1):
-    mean_correct = []
-    classifier = model.eval()
-    class_acc = np.zeros((num_class, 3))
+def test(model, loader, num_class=40, vote_num=1, debug=False):
+	mean_correct = []
+	classifier = model.eval()
+	class_acc = np.zeros((num_class, 3))
 
-    for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
-        if not args.use_cpu:
-            points, target = points.cuda(), target.cuda()
+	for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
+		if not args.use_cpu:
+			points, target = points.cuda(), target.cuda()
 
-        points = points.transpose(2, 1)
-        vote_pool = torch.zeros(target.size()[0], num_class).cuda()
+		points = points.transpose(2, 1)
+		vote_pool = torch.zeros(target.size()[0], num_class).cuda()
 
-        for _ in range(vote_num):
-            pred, _ = classifier(points)
-            vote_pool += pred
-        pred = vote_pool / vote_num
-        pred_choice = pred.data.max(1)[1]
+		for _ in range(vote_num):
+			pred, _ = classifier(points)
+			vote_pool += pred
+		pred = vote_pool / vote_num
+		pred_choice = pred.data.max(1)[1]
 
-        for cat in np.unique(target.cpu()):
-            classacc = pred_choice[target == cat].eq(target[target == cat].long().data).cpu().sum()
-            class_acc[cat, 0] += classacc.item() / float(points[target == cat].size()[0])
-            class_acc[cat, 1] += 1
-        correct = pred_choice.eq(target.long().data).cpu().sum()
-        mean_correct.append(correct.item() / float(points.size()[0]))
+		for cat in np.unique(target.cpu()):
+			classacc = pred_choice[target == cat].eq(target[target == cat].long().data).cpu().sum()
+			class_acc[cat, 0] += classacc.item() / float(points[target == cat].size()[0])
+			class_acc[cat, 1] += 1
+		correct = pred_choice.eq(target.long().data).cpu().sum()
+		mean_correct.append(correct.item() / float(points.size()[0]))
 
-    class_acc[:, 2] = class_acc[:, 0] / class_acc[:, 1]
-    class_acc = np.mean(class_acc[:, 2])
-    instance_acc = np.mean(mean_correct)
-    return instance_acc, class_acc
+		if debug:
+			bs = points.size()[0]
+			for i in range(bs):
+				print(f'{points.shape = } - {target.shape = } - {pred.shape = }')
+				print(f'{points[i].permute(1, 0).cpu().shape = } - {target[i].cpu().shape = } - {pred_choice[i].cpu().shape = }')
+				#print(f'{points[i].permute(1, 0).cpu() = } - {target[i].cpu() = } - {pred_choice[i].cpu() = }')
+				show_3d_image(points[i].permute(1, 0).cpu(), f'GT: {target[i].cpu()}/Pred: {pred_choice[i].cpu()}')
+			break
+
+	class_acc[:, 2] = class_acc[:, 0] / class_acc[:, 1]
+	class_acc = np.mean(class_acc[:, 2])
+	instance_acc = np.mean(mean_correct)
+	return instance_acc, class_acc
 
 
 def main(args):
@@ -103,7 +112,7 @@ def main(args):
 
     log_string('Loading the 3D MNIST dataset...')
     
-    _, _, testDataLoader = create_3dmnist_dataloaders()
+    _, _, testDataLoader = create_3dmnist_dataloaders(args.batch_size)
 
     '''MODEL LOADING'''
     num_class = args.num_category
@@ -126,8 +135,10 @@ def main(args):
     checkpoint = torch.load(str(experiment_dir) + '/checkpoints/best_model.pth')
     classifier.load_state_dict(checkpoint['model_state_dict'])
 
+    debug = True
+
     with torch.no_grad():
-        instance_acc, class_acc = test(classifier.eval(), testDataLoader, vote_num=args.num_votes, num_class=num_class)
+        instance_acc, class_acc = test(classifier.eval(), testDataLoader, vote_num=args.num_votes, num_class=num_class, debug=debug)
         log_string('Test Instance Accuracy: %f, Class Accuracy: %f' % (instance_acc, class_acc))
 
 
