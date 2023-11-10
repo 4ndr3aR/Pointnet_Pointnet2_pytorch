@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Author: Benny
 Date: Nov 2019
@@ -11,6 +12,11 @@ import logging
 from tqdm import tqdm
 import sys
 import importlib
+
+from torchinfo import summary
+
+from data_utils.mnist_dataset import MNIST3D, create_3dmnist_dataloaders, show_3d_image, get_random_sample
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
@@ -87,11 +93,17 @@ def main(args):
     log_string(args)
 
     '''DATA LOADING'''
+    '''
     log_string('Load dataset ...')
     data_path = 'data/modelnet40_normal_resampled/'
 
     test_dataset = ModelNetDataLoader(root=data_path, args=args, split='test', process_data=False)
     testDataLoader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=10)
+    '''
+
+    log_string('Loading the 3D MNIST dataset...')
+    
+    _, _, testDataLoader = create_3dmnist_dataloaders()
 
     '''MODEL LOADING'''
     num_class = args.num_category
@@ -101,6 +113,15 @@ def main(args):
     classifier = model.get_model(num_class, normal_channel=args.use_normals)
     if not args.use_cpu:
         classifier = classifier.cuda()
+
+    # take a look at what you're training...
+    img, lbl = get_random_sample(testDataLoader.dataset)
+    #summary(classifier, (img.shape[1], img.shape[0]))
+    #summary(classifier, input_data=img)
+    #summary(classifier, input_data=next(iter(trainDataLoader)))
+    #summary(classifier, input_data=[img, img])
+    #summary(classifier, input_data=torch.stack([img, img]))
+    summary(classifier, input_data=torch.transpose(torch.stack([img, img]), 1, 2).cuda())
 
     checkpoint = torch.load(str(experiment_dir) + '/checkpoints/best_model.pth')
     classifier.load_state_dict(checkpoint['model_state_dict'])

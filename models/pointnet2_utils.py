@@ -119,6 +119,8 @@ def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False):
         new_xyz: sampled points position data, [B, npoint, nsample, 3]
         new_points: sampled points data, [B, npoint, nsample, 3+D]
     """
+    #print(f'xyz: {xyz.shape}')
+    #print(f'points: {points.shape}')
     B, N, C = xyz.shape
     S = npoint
     fps_idx = farthest_point_sample(xyz, npoint) # [B, npoint, C]

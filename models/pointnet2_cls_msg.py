@@ -20,6 +20,7 @@ class get_model(nn.Module):
         self.fc3 = nn.Linear(256, num_class)
 
     def forward(self, xyz):
+        #print(f'{xyz.shape = }')
         B, _, _ = xyz.shape
         if self.normal_channel:
             norm = xyz[:, 3:, :]

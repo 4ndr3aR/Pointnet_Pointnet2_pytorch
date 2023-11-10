@@ -18,9 +18,13 @@ import argparse
 
 from pathlib import Path
 from tqdm import tqdm
+
+#from torchsummary import summary
+from torchinfo import summary
+
 from data_utils.ModelNetDataLoader import ModelNetDataLoader
 
-from data_utils.3dmnist_dataset import MNIST3D, create_3dmnist_dataloaders, show_3d_image
+from data_utils.mnist_dataset import MNIST3D, create_3dmnist_dataloaders, show_3d_image, get_random_sample
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
@@ -99,6 +103,7 @@ def main(args):
         exp_dir = exp_dir.joinpath(timestr)
     else:
         exp_dir = exp_dir.joinpath(args.log_dir)
+        exp_dir = exp_dir.joinpath(timestr)
     exp_dir.mkdir(exist_ok=True)
     checkpoints_dir = exp_dir.joinpath('checkpoints/')
     checkpoints_dir.mkdir(exist_ok=True)
@@ -120,7 +125,9 @@ def main(args):
     '''DATA LOADING'''
     log_string('Loading the 3D MNIST dataset...')
 
-    train_dataloader, val_dataloader, test_dataloader = create_3dmnist_dataloaders()
+    trainDataLoader, valDataLoader, testDataLoader = create_3dmnist_dataloaders(bs=args.batch_size)
+
+    print(f'trainDataLoader: {len(trainDataLoader)}, valDataLoader: {len(valDataLoader)}, testDataLoader: {len(testDataLoader)}')
 
     '''
     train_dataset = MNIST(root='./data/MNIST', download=True, train=True)
@@ -156,12 +163,26 @@ def main(args):
     shutil.copy('./train_classification.py', str(exp_dir))
 
     classifier = model.get_model(num_class, normal_channel=args.use_normals)
+
     criterion = model.get_loss()
     classifier.apply(inplace_relu)
 
     if not args.use_cpu:
         classifier = classifier.cuda()
         criterion = criterion.cuda()
+
+    # take a look at what you're training...
+    img, lbl = get_random_sample(trainDataLoader.dataset)
+    #summary(classifier, (img.shape[1], img.shape[0]))
+    #summary(classifier, input_data=img)
+    #summary(classifier, input_data=next(iter(trainDataLoader)))
+    #summary(classifier, input_data=[img, img])
+    #summary(classifier, input_data=torch.stack([img, img]))
+    #summary(classifier, input_data=torch.transpose(torch.stack([img, img]), 1, 2).cuda())
+    one_batch = next(iter(trainDataLoader))[0]
+    print(f'one_batch: {one_batch.shape}')
+    #summary(classifier, input_data=one_batch.cuda())
+    summary(classifier, input_data=torch.transpose(one_batch, 1, 2).cuda())
 
     try:
         checkpoint = torch.load(str(exp_dir) + '/checkpoints/best_model.pth')

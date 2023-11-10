@@ -39,7 +39,7 @@ def show_number_of_points_histogram():
 	plt.title('Histogram of amount of points per number')
 	plt.show()								# this shows us that the number of points should be 200
 
-def create_3dmnist_dataloaders():
+def create_3dmnist_dataloaders(bs):
 	train_dataset = MNIST(root='./data/MNIST', download=True, train=True)
 	test_dataset  = MNIST(root='./data/MNIST', download=True, train=False)
 	dataset = torch.utils.data.ConcatDataset([train_dataset, test_dataset])
@@ -52,11 +52,18 @@ def create_3dmnist_dataloaders():
                                           [round(0.8*l_data), round(0.1*l_data), round(0.1*l_data)],
                                           generator=torch.Generator().manual_seed(1))
 
-	train_dataloader = DataLoader(train_dataset, batch_size=128, shuffle=True)
-	val_dataloader   = DataLoader(val_dataset,   batch_size=128, shuffle=True)
-	test_dataloader  = DataLoader(test_dataset,  batch_size=128, shuffle=False)
+	train_dataloader = DataLoader(train_dataset, batch_size=bs, shuffle=True)
+	val_dataloader   = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
+	test_dataloader  = DataLoader(test_dataset,  batch_size=bs, shuffle=False)
 
 	return train_dataloader, val_dataloader, test_dataloader
+
+def get_random_sample(dataset):
+	random_index  = int(np.random.random() * len(dataset))
+	random_sample = dataset[random_index]
+	img, label    = random_sample[0], random_sample[1]
+	print(f'img shape: {img.shape} - label: {label}')
+	return img, label
 
 class MNIST3D(Dataset):
     """3D MNIST dataset."""
@@ -103,10 +110,6 @@ if __name__ == '__main__':
 
 	#for (image, label) in list(enumerate(train_loader))[:1000]:
 	dataset = train_dataloader.dataset
-	random_index  = int(np.random.random() * len(dataset))
-	random_sample = dataset[random_index]
-	img, label    = random_sample[0], random_sample[1]
-	print(f'img shape: {img.shape} - label: {label}')
 
 	#img, label = train_dataloader[2][0], train_dataloader[2][1]
 	print(f'img shape: {img.shape} - label: {label}')
