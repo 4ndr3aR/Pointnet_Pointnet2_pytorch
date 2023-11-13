@@ -160,7 +160,7 @@ def main(args):
         criterion = criterion.cuda()
 
     # take a look at what you're training...
-    img, lbl = get_random_sample(trainDataLoader.dataset)
+    #img, lbl = get_random_sample(trainDataLoader.dataset)
     one_batch = next(iter(trainDataLoader))
     print(f'one_batch: {len(one_batch)} - {one_batch[0].shape}')
     one_batch_data  = one_batch[0]
