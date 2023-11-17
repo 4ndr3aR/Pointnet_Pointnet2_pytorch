@@ -59,6 +59,7 @@ class CurveML(Dataset):
 	def __init__(self, path, partition, max_points=MAX_POINTS, labels=LABELS, add_noise=False):
 		self.path       = path
 		self.labels     = labels
+		#self.vocab      = [[], labels]			# because of: ```if is_listy(self.vocab): self.vocab = self.vocab[-1]```
 		self.add_noise  = add_noise
 		self.max_points = max_points
 		self.dataset    = load_dataset(path, partition + '.xz')
