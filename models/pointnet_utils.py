@@ -101,6 +101,7 @@ class PointNetEncoder(nn.Module):
             self.fstn = STNkd(k=64)
 
     def forward(self, x):
+        #print(f'x: {x.shape} - {type(x)} - {x.size()}')
         B, D, N = x.size()
         trans = self.stn(x)
         x = x.transpose(2, 1)
