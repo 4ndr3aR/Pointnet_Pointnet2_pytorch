@@ -127,7 +127,8 @@ def show_one_batch(one_batch):
 		print(f'Unknown type: {type(one_batch)}')
 
 def read_curveml_dataset(path):
-	dataset = pd.DataFrame(columns=['angle, trans_x, trans_y, a, b, n_petals', 'label', 'fpath', 'points'])
+	#dataset = pd.DataFrame(columns=['angle, trans_x, trans_y, a, b, n_petals', 'label', 'fpath', 'points'])
+	dataset = pd.DataFrame()
 
 	counter = 0
 
@@ -149,7 +150,7 @@ def read_curveml_dataset(path):
 			tmpdf['points'] = [points]
 			if counter % 1000 == 0:
 				print(f'read_curveml_dataset() - {counter} files processed ({fpath} - {label} - {points.shape})')
-				print(f'read_curveml_dataset() - {idx} - {file} - {parmfn} - {tmpdf.shape} - {tmpdf}')
+				#print(f'read_curveml_dataset() - {idx} - {file} - {parmfn} - {tmpdf.shape} - {tmpdf}')
 				print(f'read_curveml_dataset() - {idx} - {dataset.shape} - {dataset}')
 
 			dataset = dataset.append(tmpdf, ignore_index=True)
@@ -167,13 +168,13 @@ def save_dataset(dataset, path, fname):
 		pickle.dump(dataset, fhandle)
 
 def save_dataset_partitions(dataset_path):
-	test_list    = read_curveml_dataset(dataset_path / 'test')
-	save_dataset(test_list, './', 'test')
-	valid_list    = read_curveml_dataset(dataset_path / 'validation')
-	save_dataset(valid_list, './', 'validation')
-	train_list    = read_curveml_dataset(dataset_path / 'training')
-	save_dataset(train_list, './', 'training')
-	return train_list, valid_list, test_list
+	test_dataset     = read_curveml_dataset(dataset_path / 'test')
+	save_dataset(test_dataset, './', 'test')
+	valid_dataset    = read_curveml_dataset(dataset_path / 'validation')
+	save_dataset(valid_dataset, './', 'validation')
+	train_dataset    = read_curveml_dataset(dataset_path / 'training')
+	save_dataset(train_dataset, './', 'training')
+	return train_dataset, valid_dataset, test_dataset
 
 def create_curveml_dataloaders(curveml_path, bs, only_test_set=False):
 	train_dataset,    val_dataset,    test_dataset    = None, None, None
@@ -206,7 +207,8 @@ def create_curveml_dataloaders(curveml_path, bs, only_test_set=False):
 
 if __name__ == '__main__':
 
-	test_read      = True
+	test_read      = False
+	test_write     = True
 	test_load      = False
 	test_show      = False
 	test_one_batch = False
@@ -214,6 +216,11 @@ if __name__ == '__main__':
 	if test_read:
 		dataset_path = Path('/tmp/geometric-primitives-classification/geometric-primitives-dataset-v1.0-wo-splines')
 		test_data = read_curveml_dataset(dataset_path)
+		sys.exit()
+
+	if test_write:
+		dataset_path = Path('/tmp/geometric-primitives-classification/geometric-primitives-dataset-v1.0-wo-splines')
+		save_dataset_partitions(dataset_path)
 		sys.exit()
 
 	if test_load:
