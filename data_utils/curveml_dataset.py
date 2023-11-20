@@ -16,7 +16,9 @@ from numpy import genfromtxt
 from torch.utils.data import Dataset, DataLoader, random_split
 import matplotlib.pyplot as plt
 
-from .mnist_dataset import transform_img2pc, show_3d_image, get_random_sample, show_number_of_points_histogram
+import pandas as pd
+
+from mnist_dataset import transform_img2pc, show_3d_image, get_random_sample, show_number_of_points_histogram
 
 def load_dataset(path, fname, debug=False):
 	data = None
@@ -125,7 +127,7 @@ def show_one_batch(one_batch):
 		print(f'Unknown type: {type(one_batch)}')
 
 def read_curveml_dataset(path):
-	dataset = []
+	dataset = pd.DataFrame(columns=['angle, trans_x, trans_y, a, b, n_petals', 'label', 'fpath', 'points'])
 
 	counter = 0
 
@@ -139,9 +141,19 @@ def read_curveml_dataset(path):
 			fpath  = file.parent.stem			# 028676
 			label  = file.parent.parent.stem		# cassinian-oval
 			counter += 1
-			dataset.append((points, label, fpath))
+			#dataset.append((points, label, fpath))
+			parmfn = file.parent / 'parameters.csv'
+			tmpdf  = pd.read_csv(parmfn)
+			tmpdf['label']  = label
+			tmpdf['fpath']  = fpath
+			tmpdf['points'] = [points]
 			if counter % 1000 == 0:
-				print(f'read_curveml_dataset() - {counter} files processed ({fpath} - {label} - {points.shape})')	
+				print(f'read_curveml_dataset() - {counter} files processed ({fpath} - {label} - {points.shape})')
+				print(f'read_curveml_dataset() - {idx} - {file} - {parmfn} - {tmpdf.shape} - {tmpdf}')
+				print(f'read_curveml_dataset() - {idx} - {dataset.shape} - {dataset}')
+
+			dataset = dataset.append(tmpdf, ignore_index=True)
+
 	print(f'read_curveml_dataset() - {counter} files read')
 
 	return dataset
@@ -194,9 +206,15 @@ def create_curveml_dataloaders(curveml_path, bs, only_test_set=False):
 
 if __name__ == '__main__':
 
+	test_read      = True
 	test_load      = False
 	test_show      = False
-	test_one_batch = True
+	test_one_batch = False
+
+	if test_read:
+		dataset_path = Path('/tmp/geometric-primitives-classification/geometric-primitives-dataset-v1.0-wo-splines')
+		test_data = read_curveml_dataset(dataset_path)
+		sys.exit()
 
 	if test_load:
 		dataset_path = Path('/tmp/geometric-primitives-classification/geometric-primitives-dataset-v1.0-wo-splines')

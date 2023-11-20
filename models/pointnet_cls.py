@@ -40,8 +40,11 @@ class get_model(nn.Module):
         self.dropout = nn.Dropout(p=0.4)
         self.bn1 = nn.BatchNorm1d(512)
         self.bn2 = nn.BatchNorm1d(256)
-        if y_range is not None:
-            self.sigmoid_range = SigmoidRange(y_range[0], y_range[1])
+
+	self.y_range = y_range
+
+        if self.y_range is not None:
+            self.sigmoid_range = SigmoidRange(self.y_range[0], self.y_range[1])
         else:
             self.relu = nn.ReLU()
 
@@ -59,7 +62,10 @@ class get_loss(torch.nn.Module):
         self.mat_diff_loss_scale = mat_diff_loss_scale
 
     def forward(self, pred, target, trans_feat):
-        loss = F.nll_loss(pred, target)
+	if self.y_range is not None:
+            loss = F.mse_loss(pred, target)
+	else:
+            loss = F.nll_loss(pred, target)
         mat_diff_loss = feature_transform_reguliarzer(trans_feat)
 
         total_loss = loss + mat_diff_loss * self.mat_diff_loss_scale
