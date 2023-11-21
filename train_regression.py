@@ -41,6 +41,7 @@ def parse_args():
     parser.add_argument('--num_classes', default=40, type=int, choices=[8, 10, 40],  help='training on ModelNet10/40')
     parser.add_argument('--y_range_min', default=-1.,  type=float, help='min value to pass to SigmoidRange class')
     parser.add_argument('--y_range_max', default=-1.,  type=float, help='max value to pass to SigmoidRange class')
+    parser.add_argument('--gt_column', default='none',  type=str, help='max value to pass to SigmoidRange class')
     parser.add_argument('--epoch', default=200, type=int, help='number of epoch in training')
     parser.add_argument('--learning_rate', default=0.001, type=float, help='learning rate in training')
     parser.add_argument('--num_point', type=int, default=1024, help='Point Number')
@@ -66,7 +67,7 @@ def inplace_relu(m):
 def test(model, loader, num_class=40):
     mean_correct = []
     class_acc = np.zeros((num_class, 3))
-    classifier = model.eval()
+    regressor = model.eval()
 
     for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
 
@@ -74,7 +75,7 @@ def test(model, loader, num_class=40):
             points, target = points.cuda(), target.cuda()
 
         points = points.transpose(2, 1)
-        pred, _ = classifier(points)
+        pred, _ = regressor(points)
         pred_choice = pred.data.max(1)[1]
 
         for cat in np.unique(target.cpu()):
@@ -137,7 +138,9 @@ def main(args):
     elif args.curveml_dataset:
         log_string('Loading the CurveML dataset...')
         curveml_path = Path('./data/CurveML')
-        trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(curveml_path, bs=args.batch_size, only_test_set=args.only_test_set)
+        gt_column = args.gt_column if args.gt_column is not None else 'label'
+        log_string(f'Using column {gt_column} as ground truth')
+        trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(curveml_path, gt_column=gt_column, bs=args.batch_size, only_test_set=args.only_test_set)
 
     print(f'trainDataLoader size: {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
 
@@ -152,14 +155,14 @@ def main(args):
     	shutil.copy('data_utils/curveml_dataset.py', str(exp_dir))
     shutil.copy('./train_regression.py', str(exp_dir))
 
-    classifier = model.get_model(num_class, normal_channel=args.use_normals, y_range=[args.y_range_min, args.y_range_max])
+    regressor = model.get_model(num_class, normal_channel=args.use_normals, y_range=[args.y_range_min, args.y_range_max])
 
     criterion = model.get_loss()
     if args.y_range_min == -1. and args.y_range_max == -1.:
-    	classifier.apply(inplace_relu)
+    	regressor.apply(inplace_relu)
 
     if not args.use_cpu:
-        classifier = classifier.cuda()
+        regressor = regressor.cuda()
         criterion = criterion.cuda()
 
     # take a look at what you're training...
@@ -168,14 +171,14 @@ def main(args):
     print(f'one_batch: {len(one_batch)} - {one_batch[0].shape}')
     one_batch_data  = one_batch[0]
     one_batch_label = one_batch[1]
-    summary(classifier, input_data=torch.transpose(one_batch_data, 1, 2).cuda())
+    summary(regressor, input_data=torch.transpose(one_batch_data, 1, 2).cuda())
     if args.show_one_batch:
         show_one_batch([one_batch_data, one_batch_label])
 
     try:
         checkpoint = torch.load(str(exp_dir) + '/checkpoints/best_model.pth')
         start_epoch = checkpoint['epoch']
-        classifier.load_state_dict(checkpoint['model_state_dict'])
+        regressor.load_state_dict(checkpoint['model_state_dict'])
         log_string('Use pretrain model')
     except:
         log_string('No existing model, starting training from scratch...')
@@ -183,14 +186,14 @@ def main(args):
 
     if args.optimizer == 'Adam':
         optimizer = torch.optim.Adam(
-            classifier.parameters(),
+            regressor.parameters(),
             lr=args.learning_rate,
             betas=(0.9, 0.999),
             eps=1e-08,
             weight_decay=args.decay_rate
         )
     else:
-        optimizer = torch.optim.SGD(classifier.parameters(), lr=0.01, momentum=0.9)
+        optimizer = torch.optim.SGD(regressor.parameters(), lr=0.01, momentum=0.9)
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.7)
     global_epoch = 0
@@ -203,7 +206,7 @@ def main(args):
     for epoch in range(start_epoch, args.epoch):
         log_string('Epoch %d (%d/%s):' % (global_epoch + 1, epoch + 1, args.epoch))
         mean_correct = []
-        classifier = classifier.train()
+        regressor = regressor.train()
 
         scheduler.step()
         for batch_id, (points, target) in tqdm(enumerate(trainDataLoader, 0), total=len(trainDataLoader), smoothing=0.9):
@@ -219,7 +222,7 @@ def main(args):
             if not args.use_cpu:
                 points, target = points.cuda(), target.cuda()
 
-            pred, trans_feat = classifier(points)
+            pred, trans_feat = regressor(points)
             loss = criterion(pred, target.long(), trans_feat)
             pred_choice = pred.data.max(1)[1]
 
@@ -233,7 +236,7 @@ def main(args):
         log_string('Train Instance Accuracy: %f' % train_instance_acc)
 
         with torch.no_grad():
-            instance_acc, class_acc = test(classifier.eval(), valDataLoader, num_class=num_class)
+            instance_acc, class_acc = test(regressor.eval(), valDataLoader, num_class=num_class)
 
             if (instance_acc >= best_instance_acc):
                 best_instance_acc = instance_acc
@@ -252,7 +255,7 @@ def main(args):
                     'epoch': best_epoch,
                     'instance_acc': instance_acc,
                     'class_acc': class_acc,
-                    'model_state_dict': classifier.state_dict(),
+                    'model_state_dict': regressor.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                 }
                 torch.save(state, savepath)
