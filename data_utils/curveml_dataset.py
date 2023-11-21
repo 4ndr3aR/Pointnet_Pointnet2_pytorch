@@ -20,7 +20,7 @@ import pandas as pd
 
 from .mnist_dataset import transform_img2pc, show_3d_image, get_random_sample, show_number_of_points_histogram
 
-def load_dataset(path, fname, debug=True):
+def load_dataset(path, fname, debug=False):
 	data = None
 	if Path(Path(path) / fname).is_file() and Path(fname).suffix == '.xz':
 		if debug:
@@ -75,7 +75,7 @@ class CurveML(Dataset):
 	def __len__(self):
 		return len(self.dataset)
 
-	def __getitem__(self, idx, debug=True):
+	def __getitem__(self, idx, debug=False):
 		# Dataframe columns: ['angle', 'trans_x', 'trans_y', 'a', 'b', 'n_petals', 'label', 'fpath', 'points']
 		row = self.dataset.iloc[idx]
 		points,label,fpath = row['points'],row['label'],row['fpath']

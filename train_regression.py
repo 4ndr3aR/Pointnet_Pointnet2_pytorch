@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument('--gpu', type=str, default='0', help='specify gpu device')
     parser.add_argument('--batch_size', type=int, default=24, help='batch size in training')
     parser.add_argument('--model', default='pointnet_cls', help='model name [default: pointnet_cls]')
-    parser.add_argument('--num_classes', default=40, type=int, choices=[8, 10, 40],  help='training on ModelNet10/40')
+    parser.add_argument('--num_classes', default=40, type=int, choices=[1, 8, 10, 40],  help='training on ModelNet10/40')
     parser.add_argument('--y_range_min', default=-1.,  type=float, help='min value to pass to SigmoidRange class')
     parser.add_argument('--y_range_max', default=-1.,  type=float, help='max value to pass to SigmoidRange class')
     parser.add_argument('--gt_column', default='none',  type=str, help='max value to pass to SigmoidRange class')
@@ -155,9 +155,12 @@ def main(args):
     	shutil.copy('data_utils/curveml_dataset.py', str(exp_dir))
     shutil.copy('./train_regression.py', str(exp_dir))
 
-    regressor = model.get_model(num_class, normal_channel=args.use_normals, y_range=[args.y_range_min, args.y_range_max])
+    y_range = [args.y_range_min, args.y_range_max] if args.y_range_min != -1. and args.y_range_max != -1. else None
+    if y_range is not None:
+    	print(f'Received y_range: {y_range} with type: {type(y_range[0])} - {type(y_range[1])}')
+    regressor = model.get_model(num_class, normal_channel=args.use_normals, y_range=y_range)
 
-    criterion = model.get_loss()
+    criterion = model.get_loss(y_range=y_range)
     if args.y_range_min == -1. and args.y_range_max == -1.:
     	regressor.apply(inplace_relu)
 

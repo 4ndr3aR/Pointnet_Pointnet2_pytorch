@@ -1,9 +1,10 @@
+import torch
 import torch.nn as nn
 import torch.utils.data
 import torch.nn.functional as F
 from pointnet_utils import PointNetEncoder, feature_transform_reguliarzer
 
-class SigmoidRange(Module):
+class SigmoidRange(nn.Module):
     '''
     Shape:
         - Input: :math:`(*)`, where :math:`*` means any number of dimensions.
@@ -18,11 +19,11 @@ class SigmoidRange(Module):
     '''
 
     def __init__(self, low, high):
-	super(Sigmoid, self).__init__()
-	self.low  = low
-	self.high = high
+        super(SigmoidRange, self).__init__()
+        self.low  = low
+        self.high = high
 
-    def forward(self, input: Tensor) -> Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         return torch.sigmoid(input) * (self.high - self.low) + self.low 
 
 
@@ -41,7 +42,7 @@ class get_model(nn.Module):
         self.bn1 = nn.BatchNorm1d(512)
         self.bn2 = nn.BatchNorm1d(256)
 
-	self.y_range = y_range
+        self.y_range = y_range
 
         if self.y_range is not None:
             self.sigmoid_range = SigmoidRange(self.y_range[0], self.y_range[1])
@@ -57,14 +58,15 @@ class get_model(nn.Module):
         return x, trans_feat
 
 class get_loss(torch.nn.Module):
-    def __init__(self, mat_diff_loss_scale=0.001):
+    def __init__(self, y_range=None, mat_diff_loss_scale=0.001):
         super(get_loss, self).__init__()
         self.mat_diff_loss_scale = mat_diff_loss_scale
+        self.y_range = y_range
 
     def forward(self, pred, target, trans_feat):
-	if self.y_range is not None:
-            loss = F.mse_loss(pred, target)
-	else:
+        if self.y_range is not None:
+            loss = F.mse_loss(pred, target.float())
+        else:
             loss = F.nll_loss(pred, target)
         mat_diff_loss = feature_transform_reguliarzer(trans_feat)
 
