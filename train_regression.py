@@ -99,10 +99,10 @@ def test_regression(model, loader, num_class=1, debug=False):
     regressor = model.eval()
 
     if debug:
-        print(f'type(loader): {type(loader)}')
-        print(f'len(loader): {len(loader)}')
-        print(f'bs: {loader.batch_size}')
-        print(f'mse_total: {mse_total.shape}')
+        log_string(f'type(loader): {type(loader)}')
+        log_string(f'len(loader): {len(loader)}')
+        log_string(f'bs: {loader.batch_size}')
+        log_string(f'mse_total: {mse_total.shape}')
 
     sample_counter = 0
 
@@ -117,23 +117,23 @@ def test_regression(model, loader, num_class=1, debug=False):
         #pred_choice = pred.data.max(1)[1]
 
         if debug:
-            print(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
-            print(f'[{j}] pred   : {pred} - target   : {target}')
-            print(f'[{j}] pred[0]: {pred[0]} - target[0]: {target[0]}')
+            log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
+            log_string(f'[{j}] pred   : {pred} - target   : {target}')
+            log_string(f'[{j}] pred[0]: {pred[0]} - target[0]: {target[0]}')
         pred = pred.squeeze(1)
         if debug:
-            print(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
+            log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
 
         assert(pred.shape == target.shape)
 
         mse_tensor = (pred - target) ** 2
         if debug:
-            print(f'[{j}] mse_tensor: {mse_tensor.shape}')
-            print(f'[{j}] mse_tensor: {mse_tensor}')
-            print(f'[{j}] mse_total : {mse_total.shape}')
+            log_string(f'[{j}] mse_tensor: {mse_tensor.shape}')
+            log_string(f'[{j}] mse_tensor: {mse_tensor}')
+            log_string(f'[{j}] mse_total : {mse_total.shape}')
         mse_total[j] = mse_tensor.sum()
         if debug:
-            print(f'[{j}] mse_total : {mse_total}')
+            log_string(f'[{j}] mse_total : {mse_total}')
         #for cat in np.unique(target.cpu()):
         #    classacc = pred_choice[target == cat].eq(target[target == cat].long().data).cpu().sum()
         #    class_acc[cat, 0] += classacc.item() / float(points[target == cat].size()[0])
@@ -150,7 +150,7 @@ def test_regression(model, loader, num_class=1, debug=False):
     mse_mean = mse_total.mean()
     mse_sum  = mse_total.sum()
     if debug:
-        print(f'Returning mse_mean: {mse_mean} - mse_sum: {mse_sum}')
+        log_string(f'Returning mse_mean: {mse_mean} - mse_sum: {mse_sum}')
     return mse_mean, mse_sum
 
 
@@ -219,7 +219,7 @@ def main(args):
         log_string(f'Using column {gt_column} as ground truth')
         trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(curveml_path, gt_column=gt_column, bs=args.batch_size, only_test_set=args.only_test_set)
 
-    print(f'trainDataLoader size: {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
+    log_string(f'trainDataLoader size: {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
 
     '''MODEL LOADING'''
     num_class = args.num_classes
@@ -234,7 +234,7 @@ def main(args):
 
     y_range = [args.y_range_min, args.y_range_max] if args.y_range_min != -1. and args.y_range_max != -1. else None
     if y_range is not None:
-        print(f'Received y_range: {y_range} with type: {type(y_range[0])} - {type(y_range[1])}')
+        log_string(f'Received y_range: {y_range} with type: {type(y_range[0])} - {type(y_range[1])}')
     regressor = model.get_model(num_class, normal_channel=args.use_normals, y_range=y_range)
 
     criterion = model.get_loss(y_range=y_range)
@@ -248,7 +248,7 @@ def main(args):
     # take a look at what you're training...
     #img, lbl = get_random_sample(trainDataLoader.dataset)
     one_batch = next(iter(trainDataLoader))
-    print(f'one_batch: {len(one_batch)} - {one_batch[0].shape}')
+    log_string(f'one_batch: {len(one_batch)} - {one_batch[0].shape}')
     one_batch_data  = one_batch[0]
     one_batch_label = one_batch[1]
     summary(regressor, input_data=torch.transpose(one_batch_data, 1, 2).cuda())
