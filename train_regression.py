@@ -93,8 +93,6 @@ def test(model, loader, num_class=40):
     return instance_acc, class_acc
 
 def test_regression(model, loader, num_class=1, debug=False):
-    #mean_correct = []
-    #class_acc = np.zeros((num_class, 3))
     mse_total = torch.zeros(len(loader))
     regressor = model.eval()
 
@@ -114,7 +112,6 @@ def test_regression(model, loader, num_class=1, debug=False):
         points = points.transpose(2, 1)
         pred, _ = regressor(points)
         target = target.float()
-        #pred_choice = pred.data.max(1)[1]
 
         if debug:
             log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
@@ -134,19 +131,7 @@ def test_regression(model, loader, num_class=1, debug=False):
         mse_total[j] = mse_tensor.sum()
         if debug:
             log_string(f'[{j}] mse_total : {mse_total}')
-        #for cat in np.unique(target.cpu()):
-        #    classacc = pred_choice[target == cat].eq(target[target == cat].long().data).cpu().sum()
-        #    class_acc[cat, 0] += classacc.item() / float(points[target == cat].size()[0])
-        #    class_acc[cat, 1] += 1
 
-        #correct = pred_choice.eq(target.long().data).cpu().sum()
-        #mean_correct.append(correct.item() / float(points.size()[0]))
-
-    #class_acc[:, 2] = class_acc[:, 0] / class_acc[:, 1]
-    #class_acc = np.mean(class_acc[:, 2])
-    #instance_acc = np.mean(mean_correct)
-
-    #return instance_acc, class_acc
     mse_mean = mse_total.mean()
     mse_sum  = mse_total.sum()
     if debug:
@@ -246,7 +231,6 @@ def main(args):
         criterion = criterion.cuda()
 
     # take a look at what you're training...
-    #img, lbl = get_random_sample(trainDataLoader.dataset)
     one_batch = next(iter(trainDataLoader))
     log_string(f'one_batch: {len(one_batch)} - {one_batch[0].shape}')
     one_batch_data  = one_batch[0]

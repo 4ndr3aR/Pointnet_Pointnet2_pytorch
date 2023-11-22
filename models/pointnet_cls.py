@@ -67,13 +67,9 @@ class get_loss(torch.nn.Module):
         self.y_range = y_range
 
     def forward(self, pred, target, trans_feat):
-        #print(f'self.y_range: {self.y_range}')
         if self.y_range is not None:
             pred = pred.squeeze(1)
-            #print(f'pred  : {pred.shape} - pred: {pred}')
-            #print(f'target: {target.shape} - target: {target}')
             loss = F.mse_loss(pred, target)
-            #return loss
         else:
             loss = F.nll_loss(pred, target)
         mat_diff_loss = feature_transform_reguliarzer(trans_feat)
