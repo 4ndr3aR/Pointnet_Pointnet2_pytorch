@@ -92,6 +92,83 @@ def test(model, loader, num_class=40):
 
     return instance_acc, class_acc
 
+def test_regression(model, loader, num_class=1, debug=False):
+    #mean_correct = []
+    #class_acc = np.zeros((num_class, 3))
+    mse_total = torch.zeros(len(loader))
+    regressor = model.eval()
+
+    if debug:
+        print(f'type(loader): {type(loader)}')
+        print(f'len(loader): {len(loader)}')
+        print(f'bs: {loader.batch_size}')
+        print(f'mse_total: {mse_total.shape}')
+
+    sample_counter = 0
+
+    for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
+
+        if not args.use_cpu:
+            points, target = points.cuda(), target.cuda()
+
+        points = points.transpose(2, 1)
+        pred, _ = regressor(points)
+        target = target.float()
+        #pred_choice = pred.data.max(1)[1]
+
+        if debug:
+            print(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
+            print(f'[{j}] pred   : {pred} - target   : {target}')
+            print(f'[{j}] pred[0]: {pred[0]} - target[0]: {target[0]}')
+        pred = pred.squeeze(1)
+        if debug:
+            print(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
+
+        assert(pred.shape == target.shape)
+
+        mse_tensor = (pred - target) ** 2
+        if debug:
+            print(f'[{j}] mse_tensor: {mse_tensor.shape}')
+            print(f'[{j}] mse_tensor: {mse_tensor}')
+            print(f'[{j}] mse_total : {mse_total.shape}')
+        mse_total[j] = mse_tensor.sum()
+        if debug:
+            print(f'[{j}] mse_total : {mse_total}')
+        #for cat in np.unique(target.cpu()):
+        #    classacc = pred_choice[target == cat].eq(target[target == cat].long().data).cpu().sum()
+        #    class_acc[cat, 0] += classacc.item() / float(points[target == cat].size()[0])
+        #    class_acc[cat, 1] += 1
+
+        #correct = pred_choice.eq(target.long().data).cpu().sum()
+        #mean_correct.append(correct.item() / float(points.size()[0]))
+
+    #class_acc[:, 2] = class_acc[:, 0] / class_acc[:, 1]
+    #class_acc = np.mean(class_acc[:, 2])
+    #instance_acc = np.mean(mean_correct)
+
+    #return instance_acc, class_acc
+    mse_mean = mse_total.mean()
+    mse_sum  = mse_total.sum()
+    if debug:
+        print(f'Returning mse_mean: {mse_mean} - mse_sum: {mse_sum}')
+    return mse_mean, mse_sum
+
+
+def save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=0, class_acc=0, mse_mean=0, mse_sum=0):
+	logger.info('Saving model...')
+	savepath = str(checkpoints_dir) + '/best_model.pth'
+	log_string('Saving at %s' % savepath)
+	state = {
+		'epoch': best_epoch,
+		'instance_acc': instance_acc,
+		'class_acc': class_acc,
+		'mse_mean': mse_mean,
+		'mse_sum': mse_sum,
+		'model_state_dict': regressor.state_dict(),
+		'optimizer_state_dict': optimizer.state_dict(),
+	}
+	torch.save(state, savepath)
+
 
 def main(args):
     def log_string(str):
@@ -150,19 +227,19 @@ def main(args):
     shutil.copy('./models/%s.py' % args.model, str(exp_dir))
     shutil.copy('models/pointnet2_utils.py', str(exp_dir))
     if args.mnist_dataset:
-    	shutil.copy('data_utils/mnist_dataset.py', str(exp_dir))
+        shutil.copy('data_utils/mnist_dataset.py', str(exp_dir))
     if args.curveml_dataset:
-    	shutil.copy('data_utils/curveml_dataset.py', str(exp_dir))
+        shutil.copy('data_utils/curveml_dataset.py', str(exp_dir))
     shutil.copy('./train_regression.py', str(exp_dir))
 
     y_range = [args.y_range_min, args.y_range_max] if args.y_range_min != -1. and args.y_range_max != -1. else None
     if y_range is not None:
-    	print(f'Received y_range: {y_range} with type: {type(y_range[0])} - {type(y_range[1])}')
+        print(f'Received y_range: {y_range} with type: {type(y_range[0])} - {type(y_range[1])}')
     regressor = model.get_model(num_class, normal_channel=args.use_normals, y_range=y_range)
 
     criterion = model.get_loss(y_range=y_range)
     if args.y_range_min == -1. and args.y_range_max == -1.:
-    	regressor.apply(inplace_relu)
+        regressor.apply(inplace_relu)
 
     if not args.use_cpu:
         regressor = regressor.cuda()
@@ -203,6 +280,8 @@ def main(args):
     global_step = 0
     best_instance_acc = 0.0
     best_class_acc = 0.0
+    best_mse_mean = 0.0
+    best_mse_sum = 0.0
 
     '''TRANING'''
     logger.info('Start training...')
@@ -226,42 +305,54 @@ def main(args):
                 points, target = points.cuda(), target.cuda()
 
             pred, trans_feat = regressor(points)
-            loss = criterion(pred, target.long(), trans_feat)
-            pred_choice = pred.data.max(1)[1]
+            if args.y_range_min == -1. and args.y_range_max == -1.:
+                loss = criterion(pred, target.long(), trans_feat)
+                pred_choice = pred.data.max(1)[1]
+                correct = pred_choice.eq(target.long().data).cpu().sum()
+                mean_correct.append(correct.item() / float(points.size()[0]))
+            else:
+                loss = criterion(pred, target.float(), trans_feat)
 
-            correct = pred_choice.eq(target.long().data).cpu().sum()
-            mean_correct.append(correct.item() / float(points.size()[0]))
             loss.backward()
             optimizer.step()
             global_step += 1
 
-        train_instance_acc = np.mean(mean_correct)
-        log_string('Train Instance Accuracy: %f' % train_instance_acc)
+        if args.y_range_min == -1. and args.y_range_max == -1.:
+            train_instance_acc = np.mean(mean_correct)
+            log_string('Train Instance Accuracy: %f' % train_instance_acc)
+        else:
+            log_string(f'Train MSE Loss: {loss.item()}')
+
 
         with torch.no_grad():
-            instance_acc, class_acc = test(regressor.eval(), valDataLoader, num_class=num_class)
+            if y_range is not None:
+                mse_mean, mse_sum = test_regression(regressor.eval(), valDataLoader, num_class=num_class)
 
-            if (instance_acc >= best_instance_acc):
-                best_instance_acc = instance_acc
-                best_epoch = epoch + 1
+                if (mse_mean < best_mse_mean):
+                    best_mse_mean = mse_mean
 
-            if (class_acc >= best_class_acc):
-                best_class_acc = class_acc
-            log_string('Test Instance Accuracy: %f, Class Accuracy: %f' % (instance_acc, class_acc))
-            log_string('Best Instance Accuracy: %f, Class Accuracy: %f' % (best_instance_acc, best_class_acc))
+                if (mse_sum  < best_mse_sum):
+                    best_mse_sum  = mse_sum
 
-            if (instance_acc >= best_instance_acc):
-                logger.info('Save model...')
-                savepath = str(checkpoints_dir) + '/best_model.pth'
-                log_string('Saving at %s' % savepath)
-                state = {
-                    'epoch': best_epoch,
-                    'instance_acc': instance_acc,
-                    'class_acc': class_acc,
-                    'model_state_dict': regressor.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                }
-                torch.save(state, savepath)
+                log_string(f'Valid mean MSE: {mse_mean} - Valid sum MSE: {mse_sum}')
+
+                if (mse_mean < best_mse_mean):
+                    best_epoch = epoch + 1
+                    save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=instance_acc, class_acc=class_acc, mse_mean=0, mse_sum=0)
+            else:
+                instance_acc, class_acc = test(regressor.eval(), valDataLoader, num_class=num_class)
+
+                if (instance_acc >= best_instance_acc):
+                    best_instance_acc = instance_acc
+                    best_epoch = epoch + 1
+    
+                if (class_acc >= best_class_acc):
+                    best_class_acc = class_acc
+                log_string('Test Instance Accuracy: %f, Class Accuracy: %f' % (instance_acc, class_acc))
+                log_string('Best Instance Accuracy: %f, Class Accuracy: %f' % (best_instance_acc, best_class_acc))
+    
+                if (instance_acc >= best_instance_acc):
+                   save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=instance_acc, class_acc=class_acc, mse_mean=0, mse_sum=0)
             global_epoch += 1
 
     logger.info('End of training...')

@@ -65,7 +65,7 @@ class get_loss(torch.nn.Module):
 
     def forward(self, pred, target, trans_feat):
         if self.y_range is not None:
-            loss = F.mse_loss(pred, target.float())
+            loss = F.mse_loss(pred, target)
         else:
             loss = F.nll_loss(pred, target)
         mat_diff_loss = feature_transform_reguliarzer(trans_feat)
