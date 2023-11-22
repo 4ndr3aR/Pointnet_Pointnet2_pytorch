@@ -31,6 +31,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
 sys.path.append(os.path.join(ROOT_DIR, 'models'))
 
+logger = logging.getLogger("Model")
+
+def log_string(str):
+    logger.info(str)
+    print(str)
+
 def parse_args():
     '''PARAMETERS'''
     parser = argparse.ArgumentParser('training')
@@ -109,9 +115,9 @@ def test_regression(model, loader, num_class=1, debug=False):
         if not args.use_cpu:
             points, target = points.cuda(), target.cuda()
 
-        points = points.transpose(2, 1)
+        points  = points.transpose(2, 1)
         pred, _ = regressor(points)
-        target = target.float()
+        target  = target.float()
 
         if debug:
             log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
@@ -132,14 +138,17 @@ def test_regression(model, loader, num_class=1, debug=False):
         if debug:
             log_string(f'[{j}] mse_total : {mse_total}')
 
+        sample_counter += loader.batch_size
+
     mse_mean = mse_total.mean()
     mse_sum  = mse_total.sum()
+    mse = 1. * mse_total.sum() / sample_counter
     if debug:
-        log_string(f'Returning mse_mean: {mse_mean} - mse_sum: {mse_sum}')
-    return mse_mean, mse_sum
+        log_string(f'Returning mse_mean: {mse_mean} - mse_sum: {mse_sum} - mse: {mse}')
+    return mse_mean, mse_sum, mse
 
 
-def save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=0, class_acc=0, mse_mean=0, mse_sum=0):
+def save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=0., class_acc=0., mse=0., mse_mean=0., mse_sum=0.):
 	logger.info('Saving model...')
 	savepath = str(checkpoints_dir) + '/best_model.pth'
 	log_string('Saving at %s' % savepath)
@@ -147,6 +156,7 @@ def save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=0
 		'epoch': best_epoch,
 		'instance_acc': instance_acc,
 		'class_acc': class_acc,
+		'mse': mse,
 		'mse_mean': mse_mean,
 		'mse_sum': mse_sum,
 		'model_state_dict': regressor.state_dict(),
@@ -156,9 +166,6 @@ def save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=0
 
 
 def main(args):
-    def log_string(str):
-        logger.info(str)
-        print(str)
 
     '''HYPER PARAMETER'''
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
@@ -182,7 +189,6 @@ def main(args):
 
     '''LOG'''
     args = parse_args()
-    logger = logging.getLogger("Model")
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     file_handler = logging.FileHandler('%s/%s.txt' % (log_dir, args.model))
@@ -260,12 +266,15 @@ def main(args):
         optimizer = torch.optim.SGD(regressor.parameters(), lr=0.01, momentum=0.9)
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.7)
-    global_epoch = 0
-    global_step = 0
+
+    global_epoch      = 0
+    global_step       = 0
+
     best_instance_acc = 0.0
-    best_class_acc = 0.0
-    best_mse_mean = 0.0
-    best_mse_sum = 0.0
+    best_class_acc    = 0.0
+    best_mse_mean     = 0.0
+    best_mse_sum      = 0.0
+    best_mse          = 0.0
 
     '''TRANING'''
     logger.info('Start training...')
@@ -310,7 +319,7 @@ def main(args):
 
         with torch.no_grad():
             if y_range is not None:
-                mse_mean, mse_sum = test_regression(regressor.eval(), valDataLoader, num_class=num_class)
+                mse_mean, mse_sum, mse = test_regression(regressor.eval(), valDataLoader, num_class=num_class)
 
                 if (mse_mean < best_mse_mean):
                     best_mse_mean = mse_mean
@@ -318,11 +327,14 @@ def main(args):
                 if (mse_sum  < best_mse_sum):
                     best_mse_sum  = mse_sum
 
-                log_string(f'Valid mean MSE: {mse_mean} - Valid sum MSE: {mse_sum}')
+                if (mse < best_mse):
+                    best_mse      = mse
 
-                if (mse_mean < best_mse_mean):
+                log_string(f'Valid MSE Loss: {mse} - Valid mean MSE Loss: {mse_mean} - Valid sum MSE Loss: {mse_sum}')
+
+                if (mse < best_mse):
                     best_epoch = epoch + 1
-                    save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=instance_acc, class_acc=class_acc, mse_mean=0, mse_sum=0)
+                    save_model(best_epoch, regressor, optimizer, checkpoints_dir, mse=mse, mse_mean=mse_mean, mse_sum=mse_sum)
             else:
                 instance_acc, class_acc = test(regressor.eval(), valDataLoader, num_class=num_class)
 
@@ -336,7 +348,7 @@ def main(args):
                 log_string('Best Instance Accuracy: %f, Class Accuracy: %f' % (best_instance_acc, best_class_acc))
     
                 if (instance_acc >= best_instance_acc):
-                   save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=instance_acc, class_acc=class_acc, mse_mean=0, mse_sum=0)
+                   save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=instance_acc, class_acc=class_acc)
             global_epoch += 1
 
     logger.info('End of training...')
