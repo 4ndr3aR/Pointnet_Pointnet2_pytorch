@@ -272,9 +272,9 @@ def main(args):
 
     best_instance_acc = 0.0
     best_class_acc    = 0.0
-    best_mse_mean     = 0.0
-    best_mse_sum      = 0.0
-    best_mse          = 0.0
+    best_mse_mean     = 1.e12
+    best_mse_sum      = 1.e12
+    best_mse          = 1.e12
 
     '''TRANING'''
     logger.info('Start training...')
@@ -321,34 +321,33 @@ def main(args):
             if y_range is not None:
                 mse_mean, mse_sum, mse = test_regression(regressor.eval(), valDataLoader, num_class=num_class)
 
+                if (mse < best_mse):
+                    best_epoch    = epoch + 1
+                    best_mse      = mse
+                    save_model(best_epoch, regressor, optimizer, checkpoints_dir, mse=mse, mse_mean=mse_mean, mse_sum=mse_sum)
+
                 if (mse_mean < best_mse_mean):
                     best_mse_mean = mse_mean
 
                 if (mse_sum  < best_mse_sum):
                     best_mse_sum  = mse_sum
 
-                if (mse < best_mse):
-                    best_mse      = mse
-
                 log_string(f'Valid MSE Loss: {mse} - Valid mean MSE Loss: {mse_mean} - Valid sum MSE Loss: {mse_sum}')
 
-                if (mse < best_mse):
-                    best_epoch = epoch + 1
-                    save_model(best_epoch, regressor, optimizer, checkpoints_dir, mse=mse, mse_mean=mse_mean, mse_sum=mse_sum)
             else:
                 instance_acc, class_acc = test(regressor.eval(), valDataLoader, num_class=num_class)
 
                 if (instance_acc >= best_instance_acc):
                     best_instance_acc = instance_acc
-                    best_epoch = epoch + 1
+                    best_epoch        = epoch + 1
+                    save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=instance_acc, class_acc=class_acc)
     
                 if (class_acc >= best_class_acc):
-                    best_class_acc = class_acc
+                    best_class_acc    = class_acc
+
                 log_string('Test Instance Accuracy: %f, Class Accuracy: %f' % (instance_acc, class_acc))
                 log_string('Best Instance Accuracy: %f, Class Accuracy: %f' % (best_instance_acc, best_class_acc))
-    
-                if (instance_acc >= best_instance_acc):
-                   save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=instance_acc, class_acc=class_acc)
+
             global_epoch += 1
 
     logger.info('End of training...')
