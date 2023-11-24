@@ -32,7 +32,8 @@ def parse_args():
     parser.add_argument('--use_cpu', action='store_true', default=False, help='use cpu mode')
     parser.add_argument('--gpu', type=str, default='0', help='specify gpu device')
     parser.add_argument('--batch_size', type=int, default=24, help='batch size in training')
-    parser.add_argument('--num_category', default=40, type=int, choices=[8, 10, 40],  help='training on ModelNet10/40')
+    parser.add_argument('--num_classes', default=40, type=int, choices=[8, 10, 40],  help='training on ModelNet10/40')
+    parser.add_argument('--gt_column', default='none',  type=str, help='ground truth column name in the DataFrame')
     parser.add_argument('--num_point', type=int, default=1024, help='Point Number')
     parser.add_argument('--log_dir', type=str, required=True, help='Experiment root')
     parser.add_argument('--use_normals', action='store_true', default=False, help='use normals')
@@ -45,17 +46,17 @@ def parse_args():
     return parser.parse_args()
 
 
-def test(model, loader, num_class=40, vote_num=1, debug=False):
+def test(model, loader, num_classes=40, vote_num=1, debug=False):
 	mean_correct = []
 	classifier = model.eval()
-	class_acc = np.zeros((num_class, 3))
+	class_acc = np.zeros((num_classes, 3))
 
 	for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
 		if not args.use_cpu:
 			points, target = points.cuda(), target.cuda()
 
 		points = points.transpose(2, 1)
-		vote_pool = torch.zeros(target.size()[0], num_class).cuda()
+		vote_pool = torch.zeros(target.size()[0], num_classes).cuda()
 
 		for _ in range(vote_num):
 			pred, _ = classifier(points)
@@ -122,28 +123,20 @@ def main(args):
     elif args.curveml_dataset:
         log_string('Loading the CurveML dataset...')
         curveml_path = Path('./data/CurveML')
-        _, _, testDataLoader = create_curveml_dataloaders(curveml_path, bs=args.batch_size, only_test_set=True)
+        _, _, testDataLoader = create_curveml_dataloaders(curveml_path, gt_column=gt_column, bs=args.batch_size, only_test_set=True)
 
     print(f'testDataLoader size: {len(testDataLoader)}')
 
     '''MODEL LOADING'''
-    num_class = args.num_category
+    num_classes = args.num_classes
     model_name = os.listdir(experiment_dir + '/logs')[0].split('.')[0]
     model = importlib.import_module(model_name)
 
-    classifier = model.get_model(num_class, normal_channel=args.use_normals)
+    classifier = model.get_model(num_classes, normal_channel=args.use_normals)
     if not args.use_cpu:
         classifier = classifier.cuda()
 
-    # take a look at what you're training...
-    #img, lbl = get_random_sample(testDataLoader.dataset)
-    #summary(classifier, (img.shape[1], img.shape[0]))
-    #summary(classifier, input_data=img)
-    #summary(classifier, input_data=next(iter(trainDataLoader)))
-    #summary(classifier, input_data=[img, img])
-    #summary(classifier, input_data=torch.stack([img, img]))
-    #summary(classifier, input_data=torch.transpose(torch.stack([img, img]), 1, 2).cuda())
-
+    # take a look at what you're testing...
     one_batch = next(iter(testDataLoader))
     print(f'one_batch: {len(one_batch)} - {one_batch[0].shape}')
     one_batch_data  = one_batch[0]
@@ -156,7 +149,7 @@ def main(args):
     classifier.load_state_dict(checkpoint['model_state_dict'])
 
     with torch.no_grad():
-        instance_acc, class_acc = test(classifier.eval(), testDataLoader, vote_num=args.num_votes, num_class=num_class, debug=args.show_predictions)
+        instance_acc, class_acc = test(classifier.eval(), testDataLoader, vote_num=args.num_votes, num_classes=num_classes, debug=args.show_predictions)
         log_string('Test Instance Accuracy: %f, Class Accuracy: %f' % (instance_acc, class_acc))
 
 

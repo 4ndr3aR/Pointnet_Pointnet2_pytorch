@@ -47,7 +47,7 @@ def parse_args():
     parser.add_argument('--num_classes', default=40, type=int, choices=[1, 8, 10, 40],  help='training on ModelNet10/40')
     parser.add_argument('--y_range_min', default=-1.,  type=float, help='min value to pass to SigmoidRange class')
     parser.add_argument('--y_range_max', default=-1.,  type=float, help='max value to pass to SigmoidRange class')
-    parser.add_argument('--gt_column', default='none',  type=str, help='max value to pass to SigmoidRange class')
+    parser.add_argument('--gt_column', default='none',  type=str, help='ground truth column name in the DataFrame')
     parser.add_argument('--num_point', type=int, default=1024, help='Point Number')
     parser.add_argument('--log_dir', type=str, required=True, help='Experiment root')
     parser.add_argument('--use_normals', action='store_true', default=False, help='use normals')
@@ -183,7 +183,6 @@ def main(args):
     regressor.load_state_dict(checkpoint['model_state_dict'])
 
     with torch.no_grad():
-        #instance_acc, class_acc = test(regressor.eval(), testDataLoader, vote_num=args.num_votes, num_classes=num_classes, debug=args.show_predictions)
         mse_mean, mse_sum, mse = test_regression(regressor.eval(), testDataLoader, num_classes=num_classes, debug=args.show_predictions)
         log_string(f'Test MSE Loss: {mse} - Test mean MSE Loss: {mse_mean} - Test sum MSE Loss: {mse_sum}')
 
