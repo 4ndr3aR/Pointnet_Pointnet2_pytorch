@@ -1,0 +1,223 @@
+2023-11-23 13:57:15,815 - Model - INFO - PARAMETER ...
+2023-11-23 13:57:15,815 - Model - INFO - Namespace(batch_size=16, curveml_dataset=True, gpu='0', gt_column='n_petals', log_dir='pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27', mnist_dataset=False, num_classes=1, num_point=1024, num_votes=3, show_one_batch=False, show_predictions=True, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=8.0, y_range_min=0.0)
+2023-11-23 13:57:15,815 - Model - INFO - Loading the CurveML dataset...
+2023-11-23 13:57:58,883 - Model - INFO - PARAMETER ...
+2023-11-23 13:57:58,884 - Model - INFO - Namespace(batch_size=16, curveml_dataset=True, gpu='0', gt_column='n_petals', log_dir='pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27', mnist_dataset=False, num_classes=1, num_point=1024, num_votes=3, show_one_batch=False, show_predictions=True, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=8.0, y_range_min=0.0)
+2023-11-23 13:57:58,884 - Model - INFO - Loading the CurveML dataset...
+2023-11-23 13:59:23,275 - Model - INFO - PARAMETER ...
+2023-11-23 13:59:23,275 - Model - INFO - Namespace(batch_size=16, curveml_dataset=True, gpu='0', gt_column='n_petals', log_dir='pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27', mnist_dataset=False, num_classes=1, num_point=1024, num_votes=3, show_one_batch=False, show_predictions=True, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=8.0, y_range_min=0.0)
+2023-11-23 13:59:23,275 - Model - INFO - Loading the CurveML dataset...
+2023-11-23 13:59:55,786 - Model - INFO - type(loader): <class 'torch.utils.data.dataloader.DataLoader'>
+2023-11-23 13:59:55,787 - Model - INFO - len(loader): 3500
+2023-11-23 13:59:55,787 - Model - INFO - bs: 16
+2023-11-23 13:59:55,787 - Model - INFO - mse_total: torch.Size([3500])
+2023-11-23 13:59:55,801 - Model - INFO - [0] pred   : torch.Size([16, 1]) - target   : torch.Size([16])
+2023-11-23 13:59:55,856 - Model - INFO - [0] pred   : tensor([[0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.]], device='cuda:0') - target   : tensor([0., 3., 0., 5., 0., 8., 7., 8., 5., 7., 7., 0., 7., 0., 0., 0.],
+       device='cuda:0')
+2023-11-23 13:59:55,856 - Model - INFO - [0] pred[0]: tensor([0.], device='cuda:0') - target[0]: 0.0
+2023-11-23 13:59:55,856 - Model - INFO - [0] pred   : torch.Size([16]) - target   : torch.Size([16])
+2023-11-23 13:59:55,880 - Model - INFO - [0] mse_tensor: torch.Size([16])
+2023-11-23 13:59:55,881 - Model - INFO - [0] mse_tensor: tensor([ 0.,  9.,  0., 25.,  0., 64., 49., 64., 25., 49., 49.,  0., 49.,  0.,
+         0.,  0.], device='cuda:0')
+2023-11-23 13:59:55,881 - Model - INFO - [0] mse_total : torch.Size([3500])
+2023-11-23 13:59:56,093 - Model - INFO - [0] mse_total : tensor([383.,   0.,   0.,  ...,   0.,   0.,   0.])
+2023-11-23 14:00:48,953 - Model - INFO - PARAMETER ...
+2023-11-23 14:00:48,953 - Model - INFO - Namespace(batch_size=16, curveml_dataset=True, gpu='0', gt_column='npetals', log_dir='pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27', mnist_dataset=False, num_classes=1, num_point=1024, num_votes=3, show_one_batch=False, show_predictions=True, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=8.0, y_range_min=0.0)
+2023-11-23 14:00:48,953 - Model - INFO - Loading the CurveML dataset...
+2023-11-23 14:01:14,063 - Model - INFO - PARAMETER ...
+2023-11-23 14:01:14,063 - Model - INFO - Namespace(batch_size=16, curveml_dataset=True, gpu='0', gt_column='n_petals', log_dir='pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27', mnist_dataset=False, num_classes=1, num_point=1024, num_votes=3, show_one_batch=False, show_predictions=True, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=8.0, y_range_min=0.0)
+2023-11-23 14:01:14,063 - Model - INFO - Loading the CurveML dataset...
+2023-11-23 14:01:27,828 - Model - INFO - type(loader): <class 'torch.utils.data.dataloader.DataLoader'>
+2023-11-23 14:01:27,828 - Model - INFO - len(loader): 3500
+2023-11-23 14:01:27,828 - Model - INFO - bs: 16
+2023-11-23 14:01:27,829 - Model - INFO - mse_total: torch.Size([3500])
+2023-11-23 14:01:27,841 - Model - INFO - [0] pred   : torch.Size([16, 1]) - target   : torch.Size([16])
+2023-11-23 14:01:27,843 - Model - INFO - [0] pred   : tensor([[0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.]], device='cuda:0') - target   : tensor([0., 0., 0., 0., 5., 0., 0., 0., 0., 0., 3., 8., 4., 0., 0., 0.],
+       device='cuda:0')
+2023-11-23 14:01:27,843 - Model - INFO - [0] pred[0]: tensor([0.], device='cuda:0') - target[0]: 0.0
+2023-11-23 14:01:27,843 - Model - INFO - [0] pred   : torch.Size([16]) - target   : torch.Size([16])
+2023-11-23 14:01:27,843 - Model - INFO - [0] mse_tensor: torch.Size([16])
+2023-11-23 14:01:27,844 - Model - INFO - [0] mse_tensor: tensor([ 0.,  0.,  0.,  0., 25.,  0.,  0.,  0.,  0.,  0.,  9., 64., 16.,  0.,
+         0.,  0.], device='cuda:0')
+2023-11-23 14:01:27,844 - Model - INFO - [0] mse_total : torch.Size([3500])
+2023-11-23 14:01:27,845 - Model - INFO - [0] mse_total : tensor([114.,   0.,   0.,  ...,   0.,   0.,   0.])
+2023-11-23 14:05:02,205 - Model - INFO - PARAMETER ...
+2023-11-23 14:05:02,206 - Model - INFO - Namespace(batch_size=16, curveml_dataset=True, gpu='0', gt_column='n_petals', log_dir='pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27', mnist_dataset=False, num_classes=1, num_point=1024, num_votes=3, show_one_batch=False, show_predictions=True, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=8.0, y_range_min=0.0)
+2023-11-23 14:05:02,206 - Model - INFO - Loading the CurveML dataset...
+2023-11-23 14:05:15,971 - Model - INFO - type(loader): <class 'torch.utils.data.dataloader.DataLoader'>
+2023-11-23 14:05:15,971 - Model - INFO - len(loader): 3500
+2023-11-23 14:05:15,971 - Model - INFO - bs: 16
+2023-11-23 14:05:15,971 - Model - INFO - mse_total: torch.Size([3500])
+2023-11-23 14:05:15,982 - Model - INFO - [0] pred   : torch.Size([16, 1]) - target   : torch.Size([16])
+2023-11-23 14:05:15,986 - Model - INFO - [0] pred   : tensor([[0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.],
+        [0.]], device='cuda:0') - target   : tensor([0., 0., 0., 5., 6., 0., 4., 0., 8., 0., 6., 7., 0., 6., 0., 8.],
+       device='cuda:0')
+2023-11-23 14:05:15,986 - Model - INFO - [0] pred[0]: tensor([0.], device='cuda:0') - target[0]: 0.0
+2023-11-23 14:05:15,986 - Model - INFO - [0] pred   : torch.Size([16]) - target   : torch.Size([16])
+2023-11-23 14:05:15,987 - Model - INFO - [0] mse_tensor: torch.Size([16])
+2023-11-23 14:05:15,987 - Model - INFO - [0] mse_tensor: tensor([ 0.,  0.,  0., 25., 36.,  0., 16.,  0., 64.,  0., 36., 49.,  0., 36.,
+         0., 64.], device='cuda:0')
+2023-11-23 14:05:15,987 - Model - INFO - [0] mse_total : torch.Size([3500])
+2023-11-23 14:05:15,988 - Model - INFO - [0] mse_total : tensor([326.,   0.,   0.,  ...,   0.,   0.,   0.])
+2023-11-23 14:08:02,754 - Model - INFO - PARAMETER ...
+2023-11-23 14:08:02,754 - Model - INFO - Namespace(batch_size=16, curveml_dataset=True, gpu='0', gt_column='n_petals', log_dir='pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27', mnist_dataset=False, num_classes=1, num_point=1024, num_votes=3, show_one_batch=False, show_predictions=True, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=8.0, y_range_min=0.0)
+2023-11-23 14:08:02,754 - Model - INFO - Loading the CurveML dataset...
+2023-11-23 14:09:09,625 - Model - INFO - PARAMETER ...
+2023-11-23 14:09:09,625 - Model - INFO - Namespace(batch_size=16, curveml_dataset=True, gpu='0', gt_column='n_petals', log_dir='pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27', mnist_dataset=False, num_classes=1, num_point=1024, num_votes=3, show_one_batch=False, show_predictions=True, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=8.0, y_range_min=0.0)
+2023-11-23 14:09:09,625 - Model - INFO - Loading the CurveML dataset...
+2023-11-23 14:09:22,387 - Model - INFO - Received y_range: [0.0, 8.0] with type: <class 'float'> - <class 'float'>
+2023-11-23 14:09:23,600 - Model - INFO - type(loader): <class 'torch.utils.data.dataloader.DataLoader'>
+2023-11-23 14:09:23,600 - Model - INFO - len(loader): 3500
+2023-11-23 14:09:23,600 - Model - INFO - bs: 16
+2023-11-23 14:09:23,600 - Model - INFO - mse_total: torch.Size([3500])
+2023-11-23 14:09:23,611 - Model - INFO - [0] pred   : torch.Size([16, 1]) - target   : torch.Size([16])
+2023-11-23 14:09:23,614 - Model - INFO - [0] pred   : tensor([[1.8717e-02],
+        [1.8010e-02],
+        [2.8395e-02],
+        [2.4218e-02],
+        [3.1765e-02],
+        [1.2153e-02],
+        [5.0251e+00],
+        [5.0195e+00],
+        [2.4068e-02],
+        [5.0269e+00],
+        [7.0808e+00],
+        [2.0808e-02],
+        [7.0382e-03],
+        [2.6846e+00],
+        [2.8048e-02],
+        [1.0255e-02]], device='cuda:0') - target   : tensor([0., 0., 0., 0., 0., 0., 5., 5., 0., 5., 7., 0., 0., 3., 0., 0.],
+       device='cuda:0')
+2023-11-23 14:09:23,615 - Model - INFO - [0] pred[0]: tensor([0.0187], device='cuda:0') - target[0]: 0.0
+2023-11-23 14:09:23,615 - Model - INFO - [0] pred   : torch.Size([16]) - target   : torch.Size([16])
+2023-11-23 14:09:23,615 - Model - INFO - [0] mse_tensor: torch.Size([16])
+2023-11-23 14:09:23,615 - Model - INFO - [0] mse_tensor: tensor([3.5034e-04, 3.2437e-04, 8.0627e-04, 5.8649e-04, 1.0090e-03, 1.4770e-04,
+        6.3172e-04, 3.8169e-04, 5.7928e-04, 7.2188e-04, 6.5299e-03, 4.3298e-04,
+        4.9536e-05, 9.9466e-02, 7.8672e-04, 1.0517e-04], device='cuda:0')
+2023-11-23 14:09:23,615 - Model - INFO - [0] mse_total : torch.Size([3500])
+2023-11-23 14:09:23,616 - Model - INFO - [0] mse_total : tensor([0.1129, 0.0000, 0.0000,  ..., 0.0000, 0.0000, 0.0000])
+2023-11-23 14:10:55,986 - Model - INFO - PARAMETER ...
+2023-11-23 14:10:55,986 - Model - INFO - Namespace(batch_size=16, curveml_dataset=True, gpu='0', gt_column='n_petals', log_dir='pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27', mnist_dataset=False, num_classes=1, num_point=1024, num_votes=3, show_one_batch=False, show_predictions=True, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=8.0, y_range_min=0.0)
+2023-11-23 14:10:55,986 - Model - INFO - Loading the CurveML dataset...
+2023-11-23 14:11:08,605 - Model - INFO - Received y_range: [0.0, 8.0] with type: <class 'float'> - <class 'float'>
+2023-11-23 14:11:09,779 - Model - INFO - type(loader): <class 'torch.utils.data.dataloader.DataLoader'>
+2023-11-23 14:11:09,779 - Model - INFO - len(loader): 3500
+2023-11-23 14:11:09,779 - Model - INFO - bs: 16
+2023-11-23 14:11:09,779 - Model - INFO - mse_total: torch.Size([3500])
+2023-11-23 14:11:09,790 - Model - INFO - [0] pred   : torch.Size([16, 1]) - target   : torch.Size([16])
+2023-11-23 14:11:09,793 - Model - INFO - [0] pred   : tensor([[2.6959],
+        [0.0208],
+        [5.0229],
+        [0.0152],
+        [0.0335],
+        [0.0212],
+        [0.0189],
+        [6.1322],
+        [7.0720],
+        [0.0216],
+        [0.0386],
+        [6.1312],
+        [7.0673],
+        [0.0128],
+        [7.0756],
+        [0.0237]], device='cuda:0') - target   : tensor([3., 0., 5., 0., 0., 0., 0., 6., 7., 0., 0., 6., 7., 0., 7., 0.],
+       device='cuda:0')
+2023-11-23 14:11:09,793 - Model - INFO - [0] pred[0]: tensor([2.6959], device='cuda:0') - target[0]: 3.0
+2023-11-23 14:11:09,794 - Model - INFO - [0] pred   : torch.Size([16]) - target   : torch.Size([16])
+2023-11-23 14:11:09,794 - Model - INFO - [0] mse_tensor: torch.Size([16])
+2023-11-23 14:11:09,794 - Model - INFO - [0] mse_tensor: tensor([0.0925, 0.0004, 0.0005, 0.0002, 0.0011, 0.0004, 0.0004, 0.0175, 0.0052,
+        0.0005, 0.0015, 0.0172, 0.0045, 0.0002, 0.0057, 0.0006],
+       device='cuda:0')
+2023-11-23 14:11:09,794 - Model - INFO - [0] mse_total : torch.Size([3500])
+2023-11-23 14:11:09,795 - Model - INFO - [0] mse_total : tensor([0.1484, 0.0000, 0.0000,  ..., 0.0000, 0.0000, 0.0000])
+2023-11-23 14:12:01,639 - Model - INFO - Returning mse_mean: 4.2395524360472336e-05 - mse_sum: 0.14838433265686035 - mse: 0.009274020791053772
+2023-11-23 14:13:00,557 - Model - INFO - PARAMETER ...
+2023-11-23 14:13:00,557 - Model - INFO - Namespace(batch_size=16, curveml_dataset=True, gpu='0', gt_column='n_petals', log_dir='pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27', mnist_dataset=False, num_classes=1, num_point=1024, num_votes=3, show_one_batch=False, show_predictions=True, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=8.0, y_range_min=0.0)
+2023-11-23 14:13:00,557 - Model - INFO - Loading the CurveML dataset...
+2023-11-23 14:13:13,191 - Model - INFO - Received y_range: [0.0, 8.0] with type: <class 'float'> - <class 'float'>
+2023-11-23 14:13:14,428 - Model - INFO - type(loader): <class 'torch.utils.data.dataloader.DataLoader'>
+2023-11-23 14:13:14,429 - Model - INFO - len(loader): 3500
+2023-11-23 14:13:14,429 - Model - INFO - bs: 16
+2023-11-23 14:13:14,429 - Model - INFO - mse_total: torch.Size([3500])
+2023-11-23 14:13:14,441 - Model - INFO - [0] pred   : torch.Size([16, 1]) - target   : torch.Size([16])
+2023-11-23 14:13:14,444 - Model - INFO - [0] pred   : tensor([[2.0436e-02],
+        [1.0622e-02],
+        [8.0601e-03],
+        [1.8649e-02],
+        [1.6527e-02],
+        [2.5598e-02],
+        [1.4101e-02],
+        [1.1144e-02],
+        [5.0214e+00],
+        [3.9649e-02],
+        [7.0790e+00],
+        [1.2496e-02],
+        [7.9994e+00],
+        [7.5871e-03],
+        [2.0951e-02],
+        [7.9968e+00]], device='cuda:0') - target   : tensor([0., 0., 0., 0., 0., 0., 0., 0., 5., 0., 7., 0., 8., 0., 0., 8.],
+       device='cuda:0')
+2023-11-23 14:13:14,444 - Model - INFO - [0] pred[0]: tensor([0.0204], device='cuda:0') - target[0]: 0.0
+2023-11-23 14:13:14,444 - Model - INFO - [0] pred   : torch.Size([16]) - target   : torch.Size([16])
+2023-11-23 14:13:14,445 - Model - INFO - [0] mse_tensor: torch.Size([16])
+2023-11-23 14:13:14,445 - Model - INFO - [0] mse_tensor: tensor([4.1762e-04, 1.1283e-04, 6.4966e-05, 3.4780e-04, 2.7314e-04, 6.5525e-04,
+        1.9884e-04, 1.2418e-04, 4.5637e-04, 1.5721e-03, 6.2396e-03, 1.5616e-04,
+        3.2742e-07, 5.7565e-05, 4.3896e-04, 1.0046e-05], device='cuda:0')
+2023-11-23 14:13:14,445 - Model - INFO - [0] mse_total : torch.Size([3500])
+2023-11-23 14:13:14,446 - Model - INFO - [0] mse_total : tensor([0.0111, 0.0000, 0.0000,  ..., 0.0000, 0.0000, 0.0000])
+2023-11-23 14:13:50,019 - Model - INFO - Returning mse_mean: 3.1787635634827893e-06 - mse_sum: 0.011125672608613968 - mse: 0.000695354538038373
+2023-11-23 14:13:50,019 - Model - INFO - Test MSE Loss: 0.000695354538038373 - Test mean MSE Loss: 3.1787635634827893e-06 - Test sum MSE Loss: 0.011125672608613968
+2023-11-23 14:14:05,685 - Model - INFO - PARAMETER ...
+2023-11-23 14:14:05,685 - Model - INFO - Namespace(batch_size=16, curveml_dataset=True, gpu='0', gt_column='n_petals', log_dir='pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27', mnist_dataset=False, num_classes=1, num_point=1024, num_votes=3, show_one_batch=False, show_predictions=False, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=8.0, y_range_min=0.0)
+2023-11-23 14:14:05,685 - Model - INFO - Loading the CurveML dataset...
+2023-11-23 14:14:18,349 - Model - INFO - Received y_range: [0.0, 8.0] with type: <class 'float'> - <class 'float'>
+2023-11-23 14:14:48,510 - Model - INFO - Test MSE Loss: 0.021934749558568 - Test mean MSE Loss: 0.350955992937088 - Test sum MSE Loss: 1228.345947265625
+2023-11-23 14:18:09,514 - Model - INFO - PARAMETER ...
+2023-11-23 14:18:09,514 - Model - INFO - Namespace(batch_size=480, curveml_dataset=True, gpu='0', gt_column='n_petals', log_dir='pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27', mnist_dataset=False, num_classes=1, num_point=1024, num_votes=3, show_one_batch=False, show_predictions=False, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=8.0, y_range_min=0.0)
+2023-11-23 14:18:09,514 - Model - INFO - Loading the CurveML dataset...
+2023-11-23 14:18:22,103 - Model - INFO - Received y_range: [0.0, 8.0] with type: <class 'float'> - <class 'float'>
+2023-11-23 14:18:44,636 - Model - INFO - Test MSE Loss: 0.022027505561709404 - Test mean MSE Loss: 10.573202133178711 - Test sum MSE Loss: 1237.064697265625
