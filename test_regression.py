@@ -20,6 +20,13 @@ from torchinfo import summary
 from data_utils.mnist_dataset import MNIST3D, create_3dmnist_dataloaders, show_3d_image, get_random_sample
 from data_utils.curveml_dataset import CurveML, create_curveml_dataloaders, show_one_batch
 
+'''
+cmdlines:
+
+./test_regression.py --curveml_dataset --gt_column n_petals --y_range_min 0. --y_range_max 8. --num_classes 1 --batch_size 480 --log_dir pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27
+./test_regression.py --curveml_dataset --gt_column angle --y_range_min 0. --y_range_max 360. --num_classes 1 --batch_size 480 --log_dir pointnet-nonormal-curveml-regression-angle-bs480/2023-11-23_18-30
+
+'''
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
@@ -146,7 +153,8 @@ def main(args):
     elif args.curveml_dataset:
         log_string('Loading the CurveML dataset...')
         curveml_path = Path('./data/CurveML')
-        gt_column = args.gt_column if args.gt_column is not None else 'label'
+        gt_column = args.gt_column if args.gt_column is not None and args.gt_column != 'none' else 'label'
+        print(f'Using column: {gt_column} as ground truth...')
         _, _, testDataLoader = create_curveml_dataloaders(curveml_path, gt_column=gt_column, bs=args.batch_size, only_test_set=True)
 
     print(f'testDataLoader size: {len(testDataLoader)}')
