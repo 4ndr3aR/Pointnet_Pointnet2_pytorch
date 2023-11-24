@@ -123,6 +123,8 @@ def main(args):
     elif args.curveml_dataset:
         log_string('Loading the CurveML dataset...')
         curveml_path = Path('./data/CurveML')
+        gt_column = args.gt_column if args.gt_column is not None and args.gt_column != 'none' else 'label'
+        print(f'Using column: {gt_column} as ground truth...')
         _, _, testDataLoader = create_curveml_dataloaders(curveml_path, gt_column=gt_column, bs=args.batch_size, only_test_set=True)
 
     print(f'testDataLoader size: {len(testDataLoader)}')
