@@ -191,7 +191,7 @@ def save_dataset_partitions(dataset_path):
 	save_dataset(train_dataset, './', 'training')
 	return train_dataset, valid_dataset, test_dataset
 
-def create_curveml_dataloaders(curveml_path, bs, gt_column=None, only_test_set=False):
+def create_curveml_dataloaders(curveml_path, bs, gt_column=None, only_test_set=False, validation_and_test_sets=False):
 	train_dataset,    val_dataset,    test_dataset    = None, None, None
 	train_dataloader, val_dataloader, test_dataloader = None, None, None
 
@@ -216,6 +216,12 @@ def create_curveml_dataloaders(curveml_path, bs, gt_column=None, only_test_set=F
 	if only_test_set:
 		train_dataloader = test_dataloader
 		val_dataloader   = test_dataloader
+
+	if validation_and_test_sets:
+		print('.', end='', flush=True)
+		val_dataset    = CurveML(path=curveml_path, gt_column=gt_column, partition='validation')
+		val_dataloader = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
+		print(f'Warning: using only validation and test set for dataloaders...')
 
 	return train_dataloader, val_dataloader, test_dataloader
 

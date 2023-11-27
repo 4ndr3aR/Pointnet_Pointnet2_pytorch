@@ -26,7 +26,7 @@ for i in range(losses.shape[1]):
     ax.plot(epochs, losses[:, i], label=labels[i])
 
 # Set plot title
-plt.title('PointNet Regression Loss for parameter "angle"')
+plt.title('PointNet Regression Loss (MSE) for parameter "angle"')
 
 # Set x-axis label
 plt.xlabel('Epoch')

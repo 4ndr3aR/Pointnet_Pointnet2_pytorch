@@ -46,10 +46,12 @@ def parse_args():
     return parser.parse_args()
 
 
-def test(model, loader, num_classes=40, vote_num=1, debug=False):
+def test(model, criterion, loader, num_classes=40, vote_num=1, debug=False):
 	mean_correct = []
+	losses       = []
+
 	classifier = model.eval()
-	class_acc = np.zeros((num_classes, 3))
+	class_acc  = np.zeros((num_classes, 3))
 
 	for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
 		if not args.use_cpu:
@@ -59,10 +61,13 @@ def test(model, loader, num_classes=40, vote_num=1, debug=False):
 		vote_pool = torch.zeros(target.size()[0], num_classes).cuda()
 
 		for _ in range(vote_num):
-			pred, _ = classifier(points)
+			pred, trans_feat = classifier(points)
 			vote_pool += pred
 		pred = vote_pool / vote_num
 		pred_choice = pred.data.max(1)[1]
+
+		loss = criterion(pred, target.long(), trans_feat)
+		losses.append(loss)
 
 		for cat in np.unique(target.cpu()):
 			classacc = pred_choice[target == cat].eq(target[target == cat].long().data).cpu().sum()
@@ -86,10 +91,12 @@ def test(model, loader, num_classes=40, vote_num=1, debug=False):
 				show_3d_image(points[i].permute(1, 0).cpu(), f'GT: {target_label}/Pred: {pred_label}')
 			break
 
+	loss = torch.mean(torch.stack(losses)).cpu().numpy()
+
 	class_acc[:, 2] = class_acc[:, 0] / class_acc[:, 1]
 	class_acc = np.mean(class_acc[:, 2])
 	instance_acc = np.mean(mean_correct)
-	return instance_acc, class_acc
+	return instance_acc, class_acc, loss
 
 
 def main(args):
@@ -125,7 +132,9 @@ def main(args):
         curveml_path = Path('./data/CurveML')
         gt_column = args.gt_column if args.gt_column is not None and args.gt_column != 'none' else 'label'
         print(f'Using column: {gt_column} as ground truth...')
-        _, _, testDataLoader = create_curveml_dataloaders(curveml_path, gt_column=gt_column, bs=args.batch_size, only_test_set=True)
+        #_, _, testDataLoader = create_curveml_dataloaders(curveml_path, gt_column=gt_column, bs=args.batch_size, only_test_set=True)
+        _, valDataLoader, testDataLoader  = create_curveml_dataloaders(curveml_path, gt_column=gt_column, bs=args.batch_size, validation_and_test_sets=True)
+        testDataLoader = valDataLoader
 
     print(f'testDataLoader size: {len(testDataLoader)}')
 
@@ -135,8 +144,11 @@ def main(args):
     model = importlib.import_module(model_name)
 
     classifier = model.get_model(num_classes, normal_channel=args.use_normals)
+    criterion  = model.get_loss()
+
     if not args.use_cpu:
         classifier = classifier.cuda()
+        criterion  = criterion.cuda()
 
     # take a look at what you're testing...
     one_batch = next(iter(testDataLoader))
@@ -151,8 +163,8 @@ def main(args):
     classifier.load_state_dict(checkpoint['model_state_dict'])
 
     with torch.no_grad():
-        instance_acc, class_acc = test(classifier.eval(), testDataLoader, vote_num=args.num_votes, num_classes=num_classes, debug=args.show_predictions)
-        log_string('Test Instance Accuracy: %f, Class Accuracy: %f' % (instance_acc, class_acc))
+        instance_acc, class_acc, loss = test(classifier.eval(), criterion, testDataLoader, vote_num=args.num_votes, num_classes=num_classes, debug=args.show_predictions)
+        log_string('Test Instance Accuracy: %f, Class Accuracy: %f, Loss: %f' % (instance_acc, class_acc, loss))
 
 
 if __name__ == '__main__':
