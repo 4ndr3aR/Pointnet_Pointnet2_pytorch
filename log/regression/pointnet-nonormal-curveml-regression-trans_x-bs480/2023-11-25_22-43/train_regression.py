@@ -1,0 +1,358 @@
+#!/usr/bin/env python3
+"""
+Author: Benny
+Date: Nov 2019
+"""
+
+import os
+import sys
+import torch
+import numpy as np
+
+import datetime
+import logging
+import provider
+import importlib
+import shutil
+import argparse
+
+from pathlib import Path
+from tqdm import tqdm
+
+#from torchsummary import summary
+from torchinfo import summary
+
+from data_utils.ModelNetDataLoader import ModelNetDataLoader
+
+from data_utils.mnist_dataset   import MNIST3D, create_3dmnist_dataloaders, show_3d_image, get_random_sample
+from data_utils.curveml_dataset import CurveML, create_curveml_dataloaders, show_one_batch
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = BASE_DIR
+sys.path.append(os.path.join(ROOT_DIR, 'models'))
+
+logger = logging.getLogger("Model")
+
+def log_string(str):
+    logger.info(str)
+    print(str)
+
+def parse_args():
+    '''PARAMETERS'''
+    parser = argparse.ArgumentParser('training')
+    parser.add_argument('--use_cpu', action='store_true', default=False, help='use cpu mode')
+    parser.add_argument('--gpu', type=str, default='0', help='specify gpu device')
+    parser.add_argument('--batch_size', type=int, default=24, help='batch size in training')
+    parser.add_argument('--model', default='pointnet_cls', help='model name [default: pointnet_cls]')
+    parser.add_argument('--num_classes', default=40, type=int, choices=[1, 8, 10, 40],  help='training on ModelNet10/40')
+    parser.add_argument('--y_range_min', default=-1.,  type=float, help='min value to pass to SigmoidRange class')
+    parser.add_argument('--y_range_max', default=-1.,  type=float, help='max value to pass to SigmoidRange class')
+    parser.add_argument('--gt_column', default='none',  type=str, help='max value to pass to SigmoidRange class')
+    parser.add_argument('--epoch', default=200, type=int, help='number of epoch in training')
+    parser.add_argument('--learning_rate', default=0.001, type=float, help='learning rate in training')
+    parser.add_argument('--num_point', type=int, default=1024, help='Point Number')
+    parser.add_argument('--optimizer', type=str, default='Adam', help='optimizer for training')
+    parser.add_argument('--log_dir', type=str, default=None, help='experiment root')
+    parser.add_argument('--decay_rate', type=float, default=1e-4, help='decay rate')
+    parser.add_argument('--use_normals', action='store_true', default=False, help='use normals')
+    parser.add_argument('--process_data', action='store_true', default=False, help='save data offline')
+    parser.add_argument('--use_uniform_sample', action='store_true', default=False, help='use uniform sampiling')
+    parser.add_argument('--mnist_dataset', action='store_true', default=False, help='use the 3D MNIST dataset')
+    parser.add_argument('--curveml_dataset', action='store_true', default=False, help='use the CurveML dataset')
+    parser.add_argument('--show_one_batch', action='store_true', default=False, help='show one batch before start training')
+    parser.add_argument('--only_test_set', action='store_true', default=False, help='only use test set for a very quick run (perfect to see if the model is learning)')
+    return parser.parse_args()
+
+
+def inplace_relu(m):
+    classname = m.__class__.__name__
+    if classname.find('ReLU') != -1:
+        m.inplace=True
+
+
+def test(model, loader, num_class=40):
+    mean_correct = []
+    class_acc = np.zeros((num_class, 3))
+    regressor = model.eval()
+
+    for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
+
+        if not args.use_cpu:
+            points, target = points.cuda(), target.cuda()
+
+        points = points.transpose(2, 1)
+        pred, _ = regressor(points)
+        pred_choice = pred.data.max(1)[1]
+
+        for cat in np.unique(target.cpu()):
+            classacc = pred_choice[target == cat].eq(target[target == cat].long().data).cpu().sum()
+            class_acc[cat, 0] += classacc.item() / float(points[target == cat].size()[0])
+            class_acc[cat, 1] += 1
+
+        correct = pred_choice.eq(target.long().data).cpu().sum()
+        mean_correct.append(correct.item() / float(points.size()[0]))
+
+    class_acc[:, 2] = class_acc[:, 0] / class_acc[:, 1]
+    class_acc = np.mean(class_acc[:, 2])
+    instance_acc = np.mean(mean_correct)
+
+    return instance_acc, class_acc
+
+def test_regression(model, loader, num_class=1, debug=False):
+    mse_total = torch.zeros(len(loader))
+    regressor = model.eval()
+
+    if debug:
+        log_string(f'type(loader): {type(loader)}')
+        log_string(f'len(loader): {len(loader)}')
+        log_string(f'bs: {loader.batch_size}')
+        log_string(f'mse_total: {mse_total.shape}')
+
+    sample_counter = 0
+
+    for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
+
+        if not args.use_cpu:
+            points, target = points.cuda(), target.cuda()
+
+        points  = points.transpose(2, 1)
+        pred, _ = regressor(points)
+        target  = target.float()
+
+        if debug:
+            log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
+            log_string(f'[{j}] pred   : {pred} - target   : {target}')
+            log_string(f'[{j}] pred[0]: {pred[0]} - target[0]: {target[0]}')
+        pred = pred.squeeze(1)
+        if debug:
+            log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
+
+        assert(pred.shape == target.shape)
+
+        mse_tensor = (pred - target) ** 2
+        if debug:
+            log_string(f'[{j}] mse_tensor: {mse_tensor.shape}')
+            log_string(f'[{j}] mse_tensor: {mse_tensor}')
+            log_string(f'[{j}] mse_total : {mse_total.shape}')
+        mse_total[j] = mse_tensor.sum()
+        if debug:
+            log_string(f'[{j}] mse_total : {mse_total}')
+
+        sample_counter += loader.batch_size
+
+    mse_mean = mse_total.mean()
+    mse_sum  = mse_total.sum()
+    mse = 1. * mse_total.sum() / sample_counter
+    if debug:
+        log_string(f'Returning mse_mean: {mse_mean} - mse_sum: {mse_sum} - mse: {mse}')
+    return mse_mean, mse_sum, mse
+
+
+def save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=0., class_acc=0., mse=0., mse_mean=0., mse_sum=0.):
+	logger.info('Saving model...')
+	savepath = str(checkpoints_dir) + '/best_model.pth'
+	log_string('Saving at %s' % savepath)
+	state = {
+		'epoch': best_epoch,
+		'instance_acc': instance_acc,
+		'class_acc': class_acc,
+		'mse': mse,
+		'mse_mean': mse_mean,
+		'mse_sum': mse_sum,
+		'model_state_dict': regressor.state_dict(),
+		'optimizer_state_dict': optimizer.state_dict(),
+	}
+	torch.save(state, savepath)
+
+
+def main(args):
+
+    '''HYPER PARAMETER'''
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+
+    '''CREATE DIR'''
+    timestr = str(datetime.datetime.now().strftime('%Y-%m-%d_%H-%M'))
+    exp_dir = Path('./log/')
+    exp_dir.mkdir(exist_ok=True)
+    exp_dir = exp_dir.joinpath('regression')
+    exp_dir.mkdir(exist_ok=True)
+    if args.log_dir is None:
+        exp_dir = exp_dir.joinpath(timestr)
+    else:
+        exp_dir = exp_dir.joinpath(args.log_dir)
+        exp_dir = exp_dir.joinpath(timestr)
+    exp_dir.mkdir(exist_ok=True)
+    checkpoints_dir = exp_dir.joinpath('checkpoints/')
+    checkpoints_dir.mkdir(exist_ok=True)
+    log_dir = exp_dir.joinpath('logs/')
+    log_dir.mkdir(exist_ok=True)
+
+    '''LOG'''
+    args = parse_args()
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler = logging.FileHandler('%s/%s.txt' % (log_dir, args.model))
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    log_string('PARAMETER ...')
+    log_string(args)
+
+    '''DATA LOADING'''
+    trainDataLoader, valDataLoader, testDataLoader = None, None, None
+    if args.mnist_dataset:
+        log_string('Loading the 3D MNIST dataset...')
+        trainDataLoader, valDataLoader, testDataLoader = create_3dmnist_dataloaders(bs=args.batch_size)
+    elif args.curveml_dataset:
+        log_string('Loading the CurveML dataset...')
+        curveml_path = Path('./data/CurveML')
+        gt_column = args.gt_column if args.gt_column is not None else 'label'
+        log_string(f'Using column {gt_column} as ground truth')
+        trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(curveml_path, gt_column=gt_column, bs=args.batch_size, only_test_set=args.only_test_set)
+
+    log_string(f'trainDataLoader size: {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
+
+    '''MODEL LOADING'''
+    num_class = args.num_classes
+    model = importlib.import_module(args.model)
+    shutil.copy('./models/%s.py' % args.model, str(exp_dir))
+    shutil.copy('models/pointnet2_utils.py', str(exp_dir))
+    if args.mnist_dataset:
+        shutil.copy('data_utils/mnist_dataset.py', str(exp_dir))
+    if args.curveml_dataset:
+        shutil.copy('data_utils/curveml_dataset.py', str(exp_dir))
+    shutil.copy('./train_regression.py', str(exp_dir))
+
+    y_range = [args.y_range_min, args.y_range_max] if args.y_range_min != -1. and args.y_range_max != -1. else None
+    if y_range is not None:
+        log_string(f'Received y_range: {y_range} with type: {type(y_range[0])} - {type(y_range[1])}')
+    regressor = model.get_model(num_class, normal_channel=args.use_normals, y_range=y_range)
+
+    criterion = model.get_loss(y_range=y_range)
+    if args.y_range_min == -1. and args.y_range_max == -1.:
+        regressor.apply(inplace_relu)
+
+    if not args.use_cpu:
+        regressor = regressor.cuda()
+        criterion = criterion.cuda()
+
+    # take a look at what you're training...
+    one_batch = next(iter(trainDataLoader))
+    log_string(f'one_batch: {len(one_batch)} - {one_batch[0].shape}')
+    one_batch_data  = one_batch[0]
+    one_batch_label = one_batch[1]
+    summary(regressor, input_data=torch.transpose(one_batch_data, 1, 2).cuda())
+    if args.show_one_batch:
+        show_one_batch([one_batch_data, one_batch_label])
+
+    try:
+        checkpoint = torch.load(str(exp_dir) + '/checkpoints/best_model.pth')
+        start_epoch = checkpoint['epoch']
+        regressor.load_state_dict(checkpoint['model_state_dict'])
+        log_string('Use pretrain model')
+    except:
+        log_string('No existing model, starting training from scratch...')
+        start_epoch = 0
+
+    if args.optimizer == 'Adam':
+        optimizer = torch.optim.Adam(
+            regressor.parameters(),
+            lr=args.learning_rate,
+            betas=(0.9, 0.999),
+            eps=1e-08,
+            weight_decay=args.decay_rate
+        )
+    else:
+        optimizer = torch.optim.SGD(regressor.parameters(), lr=0.01, momentum=0.9)
+
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.7)
+
+    global_epoch      = 0
+    global_step       = 0
+
+    best_instance_acc = 0.0
+    best_class_acc    = 0.0
+    best_mse_mean     = 1.e12
+    best_mse_sum      = 1.e12
+    best_mse          = 1.e12
+
+    '''TRANING'''
+    logger.info('Start training...')
+    for epoch in range(start_epoch, args.epoch):
+        log_string('Epoch %d (%d/%s):' % (global_epoch + 1, epoch + 1, args.epoch))
+        mean_correct = []
+        regressor = regressor.train()
+
+        scheduler.step()
+        for batch_id, (points, target) in tqdm(enumerate(trainDataLoader, 0), total=len(trainDataLoader), smoothing=0.9):
+            optimizer.zero_grad()
+
+            points = points.data.numpy()
+            points = provider.random_point_dropout(points)
+            points[:, :, 0:3] = provider.random_scale_point_cloud(points[:, :, 0:3])
+            points[:, :, 0:3] = provider.shift_point_cloud(points[:, :, 0:3])
+            points = torch.Tensor(points)
+            points = points.transpose(2, 1)
+
+            if not args.use_cpu:
+                points, target = points.cuda(), target.cuda()
+
+            pred, trans_feat = regressor(points)
+            if args.y_range_min == -1. and args.y_range_max == -1.:
+                loss = criterion(pred, target.long(), trans_feat)
+                pred_choice = pred.data.max(1)[1]
+                correct = pred_choice.eq(target.long().data).cpu().sum()
+                mean_correct.append(correct.item() / float(points.size()[0]))
+            else:
+                loss = criterion(pred, target.float(), trans_feat)
+
+            loss.backward()
+            optimizer.step()
+            global_step += 1
+
+        if args.y_range_min == -1. and args.y_range_max == -1.:
+            train_instance_acc = np.mean(mean_correct)
+            log_string('Train Instance Accuracy: %f' % train_instance_acc)
+        else:
+            log_string(f'Train MSE Loss: {loss.item()}')
+
+
+        with torch.no_grad():
+            if y_range is not None:
+                mse_mean, mse_sum, mse = test_regression(regressor.eval(), valDataLoader, num_class=num_class)
+
+                if (mse < best_mse):
+                    best_epoch    = epoch + 1
+                    best_mse      = mse
+                    save_model(best_epoch, regressor, optimizer, checkpoints_dir, mse=mse, mse_mean=mse_mean, mse_sum=mse_sum)
+
+                if (mse_mean < best_mse_mean):
+                    best_mse_mean = mse_mean
+
+                if (mse_sum  < best_mse_sum):
+                    best_mse_sum  = mse_sum
+
+                log_string(f'Valid MSE Loss: {mse} - Valid mean MSE Loss: {mse_mean} - Valid sum MSE Loss: {mse_sum}')
+
+            else:
+                instance_acc, class_acc = test(regressor.eval(), valDataLoader, num_class=num_class)
+
+                if (instance_acc >= best_instance_acc):
+                    best_instance_acc = instance_acc
+                    best_epoch        = epoch + 1
+                    save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=instance_acc, class_acc=class_acc)
+    
+                if (class_acc >= best_class_acc):
+                    best_class_acc    = class_acc
+
+                log_string('Test Instance Accuracy: %f, Class Accuracy: %f' % (instance_acc, class_acc))
+                log_string('Best Instance Accuracy: %f, Class Accuracy: %f' % (best_instance_acc, best_class_acc))
+
+            global_epoch += 1
+
+    logger.info('End of training...')
+
+
+if __name__ == '__main__':
+    args = parse_args()
+    main(args)
