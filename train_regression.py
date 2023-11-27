@@ -27,6 +27,21 @@ from data_utils.ModelNetDataLoader import ModelNetDataLoader
 from data_utils.mnist_dataset   import MNIST3D, create_3dmnist_dataloaders, show_3d_image, get_random_sample
 from data_utils.curveml_dataset import CurveML, create_curveml_dataloaders, show_one_batch
 
+'''
+cmdlines:
+
+./train_regression.py --curveml_dataset --batch_size 480 --gt_column n_petals --y_range_min 0 --y_range_max 8 --num_classes 1 --model pointnet_cls --log_dir pointnet-nonormal-curveml-regression-n_petals-bs480 &> pointnet1-nonormals-curveml-regression-n_petals-bs480-train-`currdate`-`currtime`.txt
+./train_regression.py --curveml_dataset --batch_size 480 --gt_column angle --y_range_min 0. --y_range_max 360. --num_classes 1 --model pointnet_cls --log_dir pointnet-nonormal-curveml-regression-angle-bs480 &> pointnet1-nonormals-curveml-regression-angle-bs480-train-`currdate`-`currtime`.txt
+
+./train_regression.py --curveml_dataset --batch_size 480 --gt_column a --y_range_min 0. --y_range_max 2.83 --num_classes 1 --model pointnet_cls --log_dir pointnet-nonormal-curveml-regression-a-bs480 &> pointnet1-nonormals-curveml-regression-a-bs480-train-`currdate`-`currtime`.txt
+./train_regression.py --curveml_dataset --batch_size 480 --gt_column b --y_range_min 0. --y_range_max 1.05 --num_classes 1 --model pointnet_cls --log_dir pointnet-nonormal-curveml-regression-b-bs480 &> pointnet1-nonormals-curveml-regression-b-bs480-train-`currdate`-`currtime`.txt
+
+./train_regression.py --curveml_dataset --batch_size 480 --gt_column trans_x --y_range_min -0.8 --y_range_max 0.8 --num_classes 1 --model pointnet_cls --log_dir pointnet-nonormal-curveml-regression-trans_x-bs480 &> pointnet1-nonormals-curveml-regression-trans_x-bs480-train-`currdate`-`currtime`.txt
+./train_regression.py --curveml_dataset --batch_size 480 --gt_column trans_y --y_range_min -0.8 --y_range_max 0.8 --num_classes 1 --model pointnet_cls --log_dir pointnet-nonormal-curveml-regression-trans_y-bs480 &> pointnet1-nonormals-curveml-regression-trans_y-bs480-train-`currdate`-`currtime`.txt
+
+'''
+
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
 sys.path.append(os.path.join(ROOT_DIR, 'models'))

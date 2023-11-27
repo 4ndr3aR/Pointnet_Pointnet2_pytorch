@@ -23,8 +23,14 @@ from data_utils.curveml_dataset import CurveML, create_curveml_dataloaders, show
 '''
 cmdlines:
 
-./test_regression.py --curveml_dataset --gt_column n_petals --y_range_min 0. --y_range_max 8. --num_classes 1 --batch_size 480 --log_dir pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27
-./test_regression.py --curveml_dataset --gt_column angle --y_range_min 0. --y_range_max 360. --num_classes 1 --batch_size 480 --log_dir pointnet-nonormal-curveml-regression-angle-bs480/2023-11-23_18-30
+./test_regression.py --curveml_dataset --gt_column n_petals	--y_range_min 0.	--y_range_max 8.	--num_classes 1 --batch_size 480 --log_dir pointnet-nonormal-curveml-regression-n_petals-bs480/2023-11-22_16-27
+./test_regression.py --curveml_dataset --gt_column angle	--y_range_min 0.	--y_range_max 360.	--num_classes 1 --batch_size 480 --log_dir pointnet-nonormal-curveml-regression-angle-bs480/2023-11-23_18-30
+
+./test_regression.py --curveml_dataset --gt_column a		--y_range_min 0.	--y_range_max 2.83	--num_classes 1 --batch_size 480 --log_dir pointnet-nonormal-curveml-regression-a-bs480/2023-11-24_18-41
+./test_regression.py --curveml_dataset --gt_column b		--y_range_min 0.	--y_range_max 1.05	--num_classes 1 --batch_size 480 --log_dir pointnet-nonormal-curveml-regression-b-bs480/2023-11-25_08-24
+
+./test_regression.py --curveml_dataset --gt_column trans_x	--y_range_min -0.8	--y_range_max 0.8	--num_classes 1 --batch_size 480 --log_dir pointnet-nonormal-curveml-regression-trans_x-bs480/2023-11-25_22-43
+./test_regression.py --curveml_dataset --gt_column trans_y	--y_range_min -0.8	--y_range_max 0.8	--num_classes 1 --batch_size 480 --log_dir pointnet-nonormal-curveml-regression-trans_y-bs480/2023-11-26_23-59
 
 '''
 
