@@ -122,7 +122,7 @@ leg.get_frame().set_edgecolor('k')
 #ax2.legend(loc=0)
 
 fig.set_size_inches(19.2, 10.8)
-fig.savefig('aby-valid-loss.png', dpi=100)
+fig.savefig('aby-train-valid-loss.png', dpi=100)
 
 # Show the plot
 plt.show()
