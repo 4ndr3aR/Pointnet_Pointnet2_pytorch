@@ -31,7 +31,18 @@ limits = {
 plt.style.use('fivethirtyeight')
 
 # Create figure and axis objects
-fig, ax = plt.subplots()
+fig, ax1 = plt.subplots()
+
+ax2 = ax1.twinx()
+ax2._get_lines.prop_cycler = ax1._get_lines.prop_cycler		# share the same color cycle
+#ax1.plot(x, y1, 'g-')
+#ax2.plot(x, y2, 'b-')
+
+#ax1.set_xlabel('X data')
+#ax1.set_ylabel('Y1 data', color='g')
+#ax2.set_ylabel('Y2 data', color='b')
+
+
 
 #labels = ['Training Loss', 'Validation Loss']
 labels = ['a', 'b', 'y']
@@ -41,21 +52,33 @@ labels = ['a', 'b', 'y']
 plt.title(f'PointNet Regression Loss (MSE)')
 
 # Set x-axis label
-plt.xlabel('Thousands of Steps')
+#plt.xlabel('Thousands of Steps')
+ax1.set_xlabel('Epochs')
 
 # Set y-axis label
-plt.ylabel('Loss')
+#plt.ylabel('Loss')
+ax1.set_ylabel('Train Loss')
+ax2.set_ylabel('Validation Loss')
 
 # Set x and y axis limits
-plt.xlim(0, 200)
+#plt.xlim(-0.5, 200)
 #plt.ylim(limits[param][0], limits[param][1])  # Update with your desired y-axis limits
-plt.ylim(0, 0.01)
+#plt.ylim(0, 0.01)
+ax1.set_xlim(-0.1, 14.5)
+ax2.set_xlim(-0.1, 14.5)
+ax1.set_ylim(-0.01, 1.)
+ax2.set_ylim(-0.00015, 0.015)
+
+
 
 fn_prefix = 'wandb_export_'
 fn_middle = '-250px-'
 fn_suffix = '-loss-2023-11-28.csv'
 
+lines = []
+
 for run in ['train', 'valid']:
+	curr_ax = ax1 if run == 'train' else ax2
 	for param in ['a', 'b', 'y']:
 		fn = fn_prefix + param + fn_middle + run + fn_suffix
 		print(f'Processing {fn} for parameter {param}-{run}')
@@ -72,7 +95,7 @@ for run in ['train', 'valid']:
 		losses = data[1][1:].values
 	
 		for j in range(len(losses)):
-			steps[j]  = round(float(steps[j])/1000)
+			steps[j]  = float(steps[j])/14000. 	# 14k step = 1 epoch
 			losses[j] = float(losses[j])
 	
 		print(f'{steps  = }')
@@ -81,10 +104,22 @@ for run in ['train', 'valid']:
 		# Plot each loss column
 		#for i in range(losses.shape[1]):
 		#	ax.plot(data[0], data[1], label=labels[i])
-		ax.plot(steps, losses, label=f'{str(run).title()} Loss for parameter {param}')
+		line = curr_ax.plot(steps, losses, label=f'{str(run).title()} Loss for parameter {param}')
+		lines.append(line[0])
+
+
+for l in lines:
+	print(f'{l = }')
+	print(f'{l.get_label() = }')
+labs = [line.get_label() for line in lines]
+leg = ax1.legend(lines, labs, loc=0, frameon=True)
+leg.get_frame().set_edgecolor('k')
+#leg.get_frame().set_linewidth(0.5)
+
 
 # Add legend
-plt.legend()
+#ax1.legend()
+#ax2.legend(loc=0)
 
 fig.set_size_inches(19.2, 10.8)
 fig.savefig('aby-valid-loss.png', dpi=100)
