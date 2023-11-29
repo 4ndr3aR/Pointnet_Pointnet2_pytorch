@@ -2,7 +2,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-stem = 'angle-train-valid-loss'
+from colors import colors, hex_to_rgba, select_color
+
+param = 'angle'
+stem = f'{param}-train-valid-loss'
 
 # Read data from text file
 data = np.genfromtxt(stem + '.txt', skip_header=1)
@@ -23,10 +26,10 @@ labels = ['Training Loss', 'Validation Loss']
 
 # Plot each loss column
 for i in range(losses.shape[1]):
-    ax.plot(epochs, losses[:, i], label=labels[i])
+	ax.plot(epochs, losses[:, i], label=labels[i], color=select_color(param, i))
 
 # Set plot title
-plt.title('PointNet Regression Loss (MSE) for parameter "angle"')
+plt.title(f'PointNet Regression Loss (MSE) for parameter "{param}"')
 
 # Set x-axis label
 plt.xlabel('Epoch')

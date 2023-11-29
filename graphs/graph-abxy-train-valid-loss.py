@@ -7,6 +7,8 @@ import numpy as np
 
 from pathlib import Path
 
+from colors import colors, hex_to_rgba, select_color
+
 if len(sys.argv) < 2:
 	print(f'\n\tUsage: {sys.argv[0]} <stem>\n')
 	sys.exit()
@@ -45,7 +47,7 @@ labels = ['Training Loss', 'Validation Loss']
 
 # Plot each loss column
 for i in range(losses.shape[1]):
-    ax.plot(epochs, losses[:, i], label=labels[i])
+    ax.plot(epochs, losses[:, i], label=labels[i], color=select_color(param, i))
 
 # Set plot title
 plt.title(f'PointNet Regression Loss (MSE) for parameter "{param}"')

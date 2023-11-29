@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import matplotlib.pyplot as plt
 import numpy as np
+from colors import colors, hex_to_rgba, select_color
 
 # Read data from text file
-data = np.genfromtxt('cls-train-valid-acc.txt', skip_header=1)
+param = 'cls'
+data = np.genfromtxt(f'{param}-train-valid-acc.txt', skip_header=1)
 
 # Extract epoch values from the first column
 epochs = data[:, 0]
@@ -21,7 +23,7 @@ labels = ['Training Acc.', 'Validation Acc.']
 
 # Plot each loss column
 for i in range(losses.shape[1]):
-    ax.plot(epochs, losses[:, i], label=labels[i])
+    ax.plot(epochs, losses[:, i], label=labels[i], color=select_color(param, i))
 
 # Set plot title
 plt.title('PointNet Classification Accuracy')
@@ -37,10 +39,10 @@ plt.xlim(0, 200)
 plt.ylim(0.8, 1.01)  # Update with your desired y-axis limits
 
 # Add legend
-plt.legend()
+plt.legend(loc='lower right')
 
 fig.set_size_inches(19.2, 10.8)
-fig.savefig('cls-train-valid-acc.png', dpi=100)
+fig.savefig(f'{param}-train-valid-acc.png', dpi=100)
 
 # Show the plot
 plt.show()
