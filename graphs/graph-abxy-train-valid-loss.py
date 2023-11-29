@@ -8,7 +8,8 @@ import numpy as np
 
 from pathlib import Path
 
-from colors import colors, hex_to_rgba, select_color
+from colors import colors, hex_to_rgba, select_color, apply_wandb_graph_style
+
 
 limits = {
 		'a': (0, 0.050),
@@ -31,8 +32,8 @@ ax.tick_params(axis='x', which='major', bottom=True)
 
 fn_suffix = '-train-valid-loss.txt'
 #paramlist = ['a', 'b', 'x', 'y']
-#paramlist = ['a', 'b']
-paramlist = ['x', 'y']
+paramlist = ['a', 'b']
+#paramlist = ['x', 'y']
 max_val   = -1
 
 for param in paramlist:
@@ -59,49 +60,12 @@ for param in paramlist:
 			spine.set_edgecolor(hex_to_rgba(colors['axis']))    
 
 
-
-# Set plot border visibility
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
-#ax.spines['bottom'].set_visible(False)
-ax.spines['left'].set_visible(False)
-
-# Set ticks and labels params
-ax.tick_params(axis='x', colors=hex_to_rgba(colors['grid']), size=15, width=2, pad=15, direction='inout', labelsize=32)		# size = tick length
-ax.tick_params(axis='y', colors=hex_to_rgba(colors['grid']), size=0 , width=2, pad=15, direction='inout', labelsize=32)
-
-# Set plot ticks
-for ticklabel in plt.gca().get_xticklabels():
-    ticklabel.set_color(hex_to_rgba(colors['labels']))
-for ticklabel in plt.gca().get_yticklabels():
-    ticklabel.set_color(hex_to_rgba(colors['labels']))
-
-# Set plot grid
-plt.grid(axis='x', which='major', color=hex_to_rgba(colors['background']), linestyle=':', linewidth=0.5)
-plt.grid(axis='y', which='major', color=hex_to_rgba(colors['grid']), linewidth=1.5)
-
-# Change font
-titlefont = {'fontname': 'Source Sans Pro'}
-
-# Set plot title
-#plt.title(f'PointNet Regression Loss (MSE) for parameter "{param}"', color=hex_to_rgba(colors['title']), fontsize=32, **titlefont)
-plt.title(f'Train/Validation Losses', color=hex_to_rgba(colors['title']), fontsize=48, fontweight='normal', **titlefont)
-
-# Set x-axis label
-plt.xlabel('Epoch', color=hex_to_rgba(colors['title']))
-
-# Set y-axis label
-plt.ylabel('Loss', color=hex_to_rgba(colors['title']))
-
-# Set plot background color
-ax.patch.set_facecolor(hex_to_rgba(colors['background']))
+apply_wandb_graph_style(ax, plt)
 
 # Set x and y axis limits
 plt.xlim(0, 200)
 plt.ylim(0., max_val + 0.01*max_val)
-
-# Add legend
-leg = plt.legend(labelcolor='linecolor', facecolor=hex_to_rgba(colors['background']), prop={'size': 32}, loc='upper right', ncol=2)
+	
 
 # Save figure
 fig.set_size_inches(19.2, 10.8)

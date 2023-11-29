@@ -51,6 +51,46 @@ def select_color(param, selector, debug=False):
 		print(f'{rgba_select = }')
 	return rgba_select
 
+def apply_wandb_graph_style(ax, plt, loc='upper right'):
+	# Set plot border visibility
+	ax.spines['top'].set_visible(False)
+	ax.spines['right'].set_visible(False)
+	#ax.spines['bottom'].set_visible(False)
+	ax.spines['left'].set_visible(False)
+	
+	# Set ticks and labels params
+	ax.tick_params(axis='x', colors=hex_to_rgba(colors['grid']), size=15, width=2, pad=15, direction='inout', labelsize=32)		# size = tick length
+	ax.tick_params(axis='y', colors=hex_to_rgba(colors['grid']), size=0 , width=2, pad=15, direction='inout', labelsize=32)
+	
+	# Set plot ticks
+	for ticklabel in plt.gca().get_xticklabels():
+	    ticklabel.set_color(hex_to_rgba(colors['labels']))
+	for ticklabel in plt.gca().get_yticklabels():
+	    ticklabel.set_color(hex_to_rgba(colors['labels']))
+	
+	# Set plot grid
+	plt.grid(axis='x', which='major', color=hex_to_rgba(colors['background']), linestyle=':', linewidth=0.5)
+	plt.grid(axis='y', which='major', color=hex_to_rgba(colors['grid']), linewidth=1.5)
+	
+	# Change font
+	titlefont = {'fontname': 'Source Sans Pro'}
+	
+	# Set plot title
+	#plt.title(f'PointNet Regression Loss (MSE) for parameter "{param}"', color=hex_to_rgba(colors['title']), fontsize=32, **titlefont)
+	plt.title(f'Train/Validation Losses', color=hex_to_rgba(colors['title']), fontsize=48, fontweight='normal', **titlefont)
+	
+	# Set x-axis label
+	plt.xlabel('Epoch', color=hex_to_rgba(colors['title']))
+	
+	# Set y-axis label
+	plt.ylabel('Loss', color=hex_to_rgba(colors['title']))
+	
+	# Set plot background color
+	ax.patch.set_facecolor(hex_to_rgba(colors['background']))
+	
+	# Add legend
+	leg = plt.legend(labelcolor='linecolor', facecolor=hex_to_rgba(colors['background']), prop={'size': 32}, loc=loc, ncol=2)
+
 if __name__ == '__main__':
 	test_hex_to_rgba2()
 	test_hex_to_rgba()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import matplotlib.pyplot as plt
 import numpy as np
-from colors import colors, hex_to_rgba, select_color
+from colors import colors, hex_to_rgba, select_color, apply_wandb_graph_style
 
 param = 'n_petals'
 stem = f'{param}-train-valid-loss'
@@ -27,6 +27,8 @@ labels = ['Training Loss', 'Validation Loss']
 for i in range(losses.shape[1]):
     ax.plot(epochs, losses[:, i], label=labels[i], color=select_color(param, i))
 
+apply_wandb_graph_style(ax, plt)
+
 # Set plot title
 plt.title('PointNet Regression Loss (MSE) for parameter "n"')
 
@@ -41,7 +43,7 @@ plt.xlim(0, 200)
 plt.ylim(0., 2.56)  # Update with your desired y-axis limits
 
 # Add legend
-plt.legend()
+#plt.legend()
 
 fig.set_size_inches(19.2, 10.8)
 fig.savefig(stem + '.png', dpi=100)

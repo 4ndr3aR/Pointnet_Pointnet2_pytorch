@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import matplotlib.pyplot as plt
 import numpy as np
-from colors import colors, hex_to_rgba, select_color
+from colors import colors, hex_to_rgba, select_color, apply_wandb_graph_style
 
 # Read data from text file
 param = 'cls'
@@ -28,6 +28,11 @@ for i in range(losses.shape[1]):
 # Set plot title
 plt.title('PointNet Classification Accuracy')
 
+# Add legend
+#plt.legend(loc='lower right')
+
+apply_wandb_graph_style(ax, plt, loc='lower right')
+
 # Set x-axis label
 plt.xlabel('Epoch')
 
@@ -37,9 +42,6 @@ plt.ylabel('Accuracy')
 # Set x and y axis limits
 plt.xlim(0, 200)
 plt.ylim(0.8, 1.01)  # Update with your desired y-axis limits
-
-# Add legend
-plt.legend(loc='lower right')
 
 fig.set_size_inches(19.2, 10.8)
 fig.savefig(f'{param}-train-valid-acc.png', dpi=100)
