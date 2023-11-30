@@ -92,7 +92,8 @@ for param in paramlist:
 		max_val   = np.max(losses) if max_val   < np.max(losses) else max_val
 		max_epoch = np.max(epochs) if max_epoch < np.max(epochs) else max_epoch
 		#label = [f'"{param}" {run.title()} Loss' for run in ['Training', 'Validation']][i]
-		label = f'"angle" {run.title()} Loss'
+		run_label = 'Validation' if run == 'valid' else 'Training'
+		label = f'"angle" {run_label} Loss'
 		color = select_color(param, selector=1)
 		#img   = ax.plot(epochs, losses[:, i], label=label, color=color)
 		img   = ax.plot(epochs, losses, label=label, color=color)
@@ -102,7 +103,7 @@ for param in paramlist:
 			spine.set_edgecolor(hex_to_rgba(colors['axis']))    
 
 
-apply_wandb_graph_style(ax, plt, title=f'ResNet-101 {run.title()} Loss')
+apply_wandb_graph_style(ax, plt, title=f'ResNet-101 MSE Regression Loss')
 
 # Set x and y axis limits
 plt.xlim(-0.001*max_epoch,  max_epoch)
