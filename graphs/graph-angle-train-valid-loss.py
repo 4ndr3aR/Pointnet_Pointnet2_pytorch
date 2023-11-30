@@ -2,7 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from colors import colors, hex_to_rgba, select_color
+from colors import colors, hex_to_rgba, select_color, apply_wandb_graph_style
 
 param = 'angle'
 stem = f'{param}-train-valid-loss'
@@ -26,26 +26,32 @@ labels = ['Training Loss', 'Validation Loss']
 
 # Plot each loss column
 for i in range(losses.shape[1]):
-	ax.plot(epochs, losses[:, i], label=labels[i], color=select_color(param, i))
+	label = [f'"angle" {run.title()} Loss' for run in ['Training', 'Validation']][i]
+	ax.plot(epochs, losses[:, i], label=label, color=select_color(param, i))
 
 # Set plot title
-plt.title(f'PointNet Regression Loss (MSE) for parameter "{param}"')
+#plt.title(f'PointNet MSE Regression Losses')
 
 # Set x-axis label
-plt.xlabel('Epoch')
+#plt.xlabel('Epoch')
 
 # Set y-axis label
-plt.ylabel('Loss')
+#plt.ylabel('Loss')
+
+apply_wandb_graph_style(ax, plt, title='PointNet MSE Regression Losses')
 
 # Set x and y axis limits
 plt.xlim(0, 200)
 plt.ylim(0., 2050.)  # Update with your desired y-axis limits
 
+plt.subplots_adjust(bottom=0.15)
+plt.subplots_adjust(left=0.11)
+
 # Add legend
-plt.legend()
+#plt.legend()
 
 fig.set_size_inches(19.2, 10.8)
-fig.savefig(stem + '.png', dpi=100)
+fig.savefig(stem + '.png', dpi=100, bbox_inches='tight', facecolor=hex_to_rgba(colors['background']))
 
 # Show the plot
 plt.show()

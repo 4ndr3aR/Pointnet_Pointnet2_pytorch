@@ -25,12 +25,13 @@ labels = ['Training Loss', 'Validation Loss']
 
 # Plot each loss column
 for i in range(losses.shape[1]):
-    ax.plot(epochs, losses[:, i], label=labels[i], color=select_color(param, i))
+	label = [f'"n" {run.title()} Loss' for run in ['Training', 'Validation']][i]
+	ax.plot(epochs, losses[:, i], label=label, color=select_color(param, i))
 
-apply_wandb_graph_style(ax, plt)
+apply_wandb_graph_style(ax, plt, title=f'PointNet MSE Regression Losses')
 
 # Set plot title
-plt.title('PointNet Regression Loss (MSE) for parameter "n"')
+#plt.title('PointNet Regression Loss (MSE) for parameter "n"')
 
 # Set x-axis label
 plt.xlabel('Epoch')
@@ -42,11 +43,14 @@ plt.ylabel('Loss')
 plt.xlim(0, 200)
 plt.ylim(0., 2.56)  # Update with your desired y-axis limits
 
+plt.subplots_adjust(bottom=0.15)
+plt.subplots_adjust(left=0.09)
+
 # Add legend
 #plt.legend()
 
 fig.set_size_inches(19.2, 10.8)
-fig.savefig(stem + '.png', dpi=100)
+fig.savefig(stem + '.png', dpi=100, bbox_inches='tight', facecolor=hex_to_rgba(colors['background']))
 
 # Show the plot
 plt.show()

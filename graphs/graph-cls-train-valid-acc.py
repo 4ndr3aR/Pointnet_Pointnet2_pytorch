@@ -26,12 +26,12 @@ for i in range(losses.shape[1]):
     ax.plot(epochs, losses[:, i], label=labels[i], color=select_color(param, i))
 
 # Set plot title
-plt.title('PointNet Classification Accuracy')
+#plt.title('PointNet Classification Accuracy')
 
 # Add legend
 #plt.legend(loc='lower right')
 
-apply_wandb_graph_style(ax, plt, loc='lower right')
+apply_wandb_graph_style(ax, plt, loc='lower right', title='PointNet Classification Accuracies')
 
 # Set x-axis label
 plt.xlabel('Epoch')
@@ -43,8 +43,11 @@ plt.ylabel('Accuracy')
 plt.xlim(0, 200)
 plt.ylim(0.8, 1.01)  # Update with your desired y-axis limits
 
+plt.subplots_adjust(bottom=0.15)
+plt.subplots_adjust(left=0.10)
+
 fig.set_size_inches(19.2, 10.8)
-fig.savefig(f'{param}-train-valid-acc.png', dpi=100)
+fig.savefig(f'{param}-train-valid-acc.png', dpi=100, bbox_inches='tight', facecolor=hex_to_rgba(colors['background']))
 
 # Show the plot
 plt.show()

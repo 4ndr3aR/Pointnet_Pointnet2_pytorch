@@ -32,8 +32,8 @@ ax.tick_params(axis='x', which='major', bottom=True)
 
 fn_suffix = '-train-valid-loss.txt'
 #paramlist = ['a', 'b', 'x', 'y']
-paramlist = ['a', 'b']
-#paramlist = ['x', 'y']
+#paramlist = ['a', 'b']
+paramlist = ['x', 'y']
 max_val   = -1
 
 for param in paramlist:
@@ -60,12 +60,17 @@ for param in paramlist:
 			spine.set_edgecolor(hex_to_rgba(colors['axis']))    
 
 
-apply_wandb_graph_style(ax, plt)
+apply_wandb_graph_style(ax, plt, title='PointNet MSE Regression Losses')
 
 # Set x and y axis limits
 plt.xlim(0, 200)
 plt.ylim(0., max_val + 0.01*max_val)
-	
+
+plt.subplots_adjust(bottom=0.15)
+if 'x' in paramlist:
+	plt.subplots_adjust(left=0.11)
+else:
+	plt.subplots_adjust(left=0.10)
 
 # Save figure
 fig.set_size_inches(19.2, 10.8)
