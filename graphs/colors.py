@@ -51,7 +51,7 @@ def select_color(param, selector, debug=False):
 		print(f'{rgba_select = }')
 	return rgba_select
 
-def apply_wandb_graph_style(ax, plt, loc='upper right'):
+def apply_wandb_graph_style(ax, plt, loc='upper right', title='Training/Validation Losses'):
 	# Set plot border visibility
 	ax.spines['top'].set_visible(False)
 	ax.spines['right'].set_visible(False)
@@ -77,13 +77,13 @@ def apply_wandb_graph_style(ax, plt, loc='upper right'):
 	
 	# Set plot title
 	#plt.title(f'PointNet Regression Loss (MSE) for parameter "{param}"', color=hex_to_rgba(colors['title']), fontsize=32, **titlefont)
-	plt.title(f'Train/Validation Losses', color=hex_to_rgba(colors['title']), fontsize=48, fontweight='normal', **titlefont)
+	plt.title(title, color=hex_to_rgba(colors['title']), fontsize=48, fontweight='normal', **titlefont)
 	
 	# Set x-axis label
-	plt.xlabel('Epoch', color=hex_to_rgba(colors['title']))
+	plt.xlabel('Epoch', color=hex_to_rgba(colors['title']), fontsize=32)
 	
 	# Set y-axis label
-	plt.ylabel('Loss', color=hex_to_rgba(colors['title']))
+	plt.ylabel('Loss', color=hex_to_rgba(colors['title']), fontsize=32)
 	
 	# Set plot background color
 	ax.patch.set_facecolor(hex_to_rgba(colors['background']))
