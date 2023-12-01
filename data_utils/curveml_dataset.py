@@ -18,7 +18,11 @@ import matplotlib.pyplot as plt
 
 import pandas as pd
 
-from .mnist_dataset import transform_img2pc, show_3d_image, get_random_sample, show_number_of_points_histogram
+import .mnist_dataset
+from .mnist_dataset import transform_img2pc, get_random_sample, show_number_of_points_histogram
+
+def show_3d_image(points, label):
+	return mnist_dataset.show_3d_image(points, label)
 
 def load_dataset(path, fname, debug=False):
 	data = None
@@ -116,6 +120,15 @@ class CurveML(Dataset):
 		else:
 			gt = row['label']
 		return points, gt
+
+	def __getitems__(self, idxs, debug=False):
+		item_list = []
+		for idx in idxs:
+			item_list.append(self.__getitem__(idx, debug=debug))
+		return item_list
+
+	def items(self, idxs, debug=False):
+		return self.__getitems__(idxs, debug=debug)
 
 def show_one_batch(one_batch):
 	print(f'one_batch: {type(one_batch)}')

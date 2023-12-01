@@ -52,6 +52,7 @@ for param in paramlist:
 	for i in range(losses.shape[1]):
 		max_val = np.max(losses) if max_val < np.max(losses) else max_val
 		label = [f'"{param}" {run.title()} Loss' for run in ['Training', 'Validation']][i]
+		#label = label if not 'x' in param or not 'y' in param else label.replace('x', 'trans_x').replace('y', 'trans_y')
 		color = select_color(param, i)
 		img   = ax.plot(epochs, losses[:, i], label=label, color=color)
 
