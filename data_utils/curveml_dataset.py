@@ -130,26 +130,31 @@ class CurveML(Dataset):
 	def items(self, idxs, debug=False):
 		return self.__getitems__(idxs, debug=debug)
 
-def show_one_batch(one_batch):
-	print(f'one_batch: {type(one_batch)}')
-	print(f'one_batch: {len(one_batch)}')
+def show_one_batch(one_batch, debug=False):
+	if debug:
+		print(f'one_batch: {type(one_batch)}')
+		print(f'one_batch: {len(one_batch)}')
 
 	if type(one_batch) == list:
-		print(f'one_batch: {type(one_batch[0])}')
-		print(f'one_batch: {one_batch[0].shape}')
-		print(f'one_batch: {type(one_batch[1])}')
-		print(f'one_batch: {one_batch[1]}')
+		if debug:
+			print(f'one_batch: {type(one_batch[0])}')
+			print(f'one_batch: {one_batch[0].shape}')
+			print(f'one_batch: {type(one_batch[1])}')
+			print(f'one_batch: {one_batch[1]}')
 		for idx in range(len(one_batch[0])):
 			points = one_batch[0][idx]
 			label  = one_batch[1][idx]
-			print(f'Points shape: {points.shape} - label: {label}')
+			if debug:
+				print(f'Points shape: {points.shape} - label: {label}')
 			show_3d_image(points, label)
 	elif type(one_batch) == torch.Tensor:
-		print(f'one_batch: {one_batch.shape}')
+		if debug:
+			print(f'one_batch: {one_batch.shape}')
 		for idx in range(len(one_batch)):
 			points = one_batch[idx]
 			label  = one_batch[idx]
-			print(f'Points shape: {points.shape} - label: {label}')
+			if debug:
+				print(f'Points shape: {points.shape} - label: {label}')
 			show_3d_image(points, label)
 	else:
 		print(f'Unknown type: {type(one_batch)}')
