@@ -18,11 +18,11 @@ import matplotlib.pyplot as plt
 
 import pandas as pd
 
-import .mnist_dataset
+from .mnist_dataset import show_3d_image as mnist_show_3d_image
 from .mnist_dataset import transform_img2pc, get_random_sample, show_number_of_points_histogram
 
 def show_3d_image(points, label):
-	return mnist_dataset.show_3d_image(points, label)
+	return mnist_show_3d_image(points, label)
 
 def load_dataset(path, fname, debug=False):
 	data = None
