@@ -66,33 +66,41 @@ class Symmetry(Dataset):
 	MAX_POINTS = 20000
 
 	#LABELS = ['cassinian-oval', 'cissoid', 'citrus', 'egg', 'geom-petal', 'hypocycloid', 'mouth', 'spiral']
-	LABELS = ['astroid', 'geom-petal']
+	LABELS = ['astroid', 'geometric_petal']
 
 	def __init__(self, path, partition, gt_column=None, max_points=MAX_POINTS, labels=LABELS, add_noise=False):
 		self.path       = path
 		self.labels     = labels
 		#self.vocab      = [[], labels]			# because of: ```if is_listy(self.vocab): self.vocab = self.vocab[-1]```
 		self.add_noise  = add_noise
-		self.max_points = max_points
 		self.dataset    = load_dataset(path, partition + '.xz')
 		self.gt_column  = gt_column			# e.g. 'label', 'angle', 'trans_x', 'trans_y', ...
+		self.max_points = max_points
 
 	def __len__(self):
 		return len(self.dataset)
 
 	def __getitem__(self, idx, debug=False):
+		debug = True
 		# Dataframe columns: ['angle', 'trans_x', 'trans_y', 'a', 'b', 'n_petals', 'label', 'fpath', 'points']
-		row = self.dataset.iloc[idx]
+		#row = self.dataset.iloc[idx]
+		row = self.dataset[idx]
 		points,label,split = row['points'],row['label'],row['split']
 		lbl = torch.tensor(self.labels.index(label))
-		angle,trans_x,trans_y,a,b,n_petals = row['angle'],row['trans_x'],row['trans_y'],row['a'],row['b'],row['n_petals']
+		#angle,trans_x,trans_y,a,b,n_petals = row['angle'],row['trans_x'],row['trans_y'],row['a'],row['b'],row['n_petals']
+		#angle,trans_x,trans_y,a,b,n_petals = row['angle'],row['trans_x'],row['trans_y'],row['a'],row['b'],row['n_petals']
+		label, split, points, gt = row['label'], row['split'], row['points'][0], row['gt']
 
 		if debug:
 			print(f'__getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {split = } - {lbl = }')
 		points = np.hstack((points, np.zeros((points.shape[0], 1))))
 		if debug:
 			print(f'__getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {split = } - {lbl = }')
-			print(f'__getitem__() idx: {idx} - {angle = } - {trans_x = } - {trans_y = } - {a = } - {b = } - {n_petals = }')
+			for gt_row in gt.iterrows():
+				idx     = gt_row[0]
+				row_arr = gt_row[1].values
+			#print(f'__getitem__() idx: {idx} - {angle = } - {trans_x = } - {trans_y = } - {a = } - {b = } - {n_petals = }')
+			print(f'__getitem__() idx: {idx} - {label = } - {split = } - {points.shape = } - {gt.shape = } - {row_arr = }')
 
 		if self.max_points - points.shape[0] > 0:
 			# Duplicate points
@@ -262,9 +270,9 @@ def read_and_save_dataset_partitions(dataset_path):
 	test_dataset     = read_symmetry_dataset(dataset_path / 'test')
 	save_dataset(test_dataset, './', 'test')
 	valid_dataset    = read_symmetry_dataset(dataset_path / 'valid')
-	save_dataset(valid_dataset, './', 'validation')
+	save_dataset(valid_dataset, './', 'valid')
 	train_dataset    = read_symmetry_dataset(dataset_path / 'train')
-	save_dataset(train_dataset, './', 'training')
+	save_dataset(train_dataset, './', 'train')
 	return train_dataset, valid_dataset, test_dataset
 
 def create_symmetry_dataloaders(symmetry_path, bs, gt_column=None, only_test_set=False, validation_and_test_sets=False):
@@ -307,8 +315,8 @@ if __name__ == '__main__':
 	test_read      = False
 	test_write     = False
 	test_load      = False
-	test_show      = True
-	test_one_batch = False
+	test_show      = False
+	test_one_batch = True
 
 	if test_read:
 		print(f'Testing the read_symmetry_dataset() function...')
@@ -326,31 +334,29 @@ if __name__ == '__main__':
 
 	if test_load:
 		print(f'Testing the load_dataset() function...')
-		#dataset_path = Path('/tmp/geometric-primitives-classification/geometric-primitives-dataset-v1.0-wo-splines')
-		#test_data = load_dataset('../data/Symmetry', 'test.xz')
 		test_data = load_dataset('./', 'test.xz', debug=True)
 		print(f'Test dataset length: {len(test_data)}')
 		print(f'load_dataset() complete')
 		sys.exit()
 
 	if test_show:
-		srcdir = Path('symmetry-train-geom-petal-036142')
-		points = genfromtxt(srcdir / 'point_cloud_clean.csv', delimiter=',')
-		show_3d_image(points, 'geom-petal')
-		points = genfromtxt(srcdir / 'point_cloud.csv', delimiter=',')
-		show_3d_image(points, 'geom-petal')
+		dset   = load_dataset('./', 'train.xz', debug=True)
+		idx    = 0
+		points = dset[idx]['points'][0]
+		show_3d_image(points, dset[idx]['label'])
+		gt     = dset[idx]['gt']
+		print(f'gt: {gt}')
 
-		srcdir = Path('symmetry-test-cassinian-oval-027194')
-		points = genfromtxt(srcdir / 'point_cloud_clean.csv', delimiter=',')
-		show_3d_image(points, 'cassinian-oval')
-		points = genfromtxt(srcdir / 'point_cloud.csv', delimiter=',')
-		show_3d_image(points, 'cassinian-oval')
+		idx    = 11
+		points = dset[idx]['points'][0]
+		show_3d_image(points, dset[idx]['label'])
+		gt     = dset[idx]['gt']
+		print(f'gt: {gt}')
 
 	if test_one_batch:
-		#symmetry_path = Path('/tmp/geometric-primitives-classification/geometric-primitives-dataset-v1.0-wo-splines')
-		symmetry_path = Path('../data/Symmetry')
-		#symmetry_path = Path('./')
-		trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_column='a', bs=16, only_test_set=True)
+		#symmetry_path = Path('../data/Symmetry')
+		symmetry_path = Path('./')
+		trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_column='label', bs=16, only_test_set=True)
 
 		one_batch = next(iter(testDataLoader))
 		show_one_batch(one_batch)
