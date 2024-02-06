@@ -17,8 +17,9 @@ from pathlib import Path
 
 from torchinfo import summary
 
-from data_utils.mnist_dataset import MNIST3D, create_3dmnist_dataloaders, show_3d_image, get_random_sample
-from data_utils.curveml_dataset import CurveML, create_curveml_dataloaders, show_one_batch
+from data_utils.mnist_dataset    import MNIST3D, create_3dmnist_dataloaders,  show_3d_image, get_random_sample
+from data_utils.curveml_dataset  import CurveML, create_curveml_dataloaders,  show_one_batch
+from data_utils.symmetry_dataset import CurveML, create_symmetry_dataloaders, show_one_batch
 
 '''
 cmdlines:
@@ -61,6 +62,7 @@ def parse_args():
     parser.add_argument('--num_votes', type=int, default=3, help='Aggregate classification scores with voting')
     parser.add_argument('--mnist_dataset', action='store_true', default=False, help='use the 3D MNIST dataset')
     parser.add_argument('--curveml_dataset', action='store_true', default=False, help='use the CurveML dataset')
+    parser.add_argument('--symmetry_dataset', action='store_true', default=False, help='use the Symmetry dataset')
     parser.add_argument('--show_one_batch', action='store_true', default=False, help='show one batch before start training')
     parser.add_argument('--show_predictions', action='store_true', default=False, help='show predictions during testing')
     return parser.parse_args()
@@ -162,6 +164,12 @@ def main(args):
         gt_column = args.gt_column if args.gt_column is not None and args.gt_column != 'none' else 'label'
         print(f'Using column: {gt_column} as ground truth...')
         _, _, testDataLoader = create_curveml_dataloaders(curveml_path, gt_column=gt_column, bs=args.batch_size, only_test_set=True)
+    elif args.symmetry_dataset:
+        log_string('Loading the Symmetry dataset...')
+        curveml_path = Path('./data/Symmetry')
+        gt_column = args.gt_column if args.gt_column is not None and args.gt_column != 'none' else 'label'
+        print(f'Using column: {gt_column} as ground truth...')
+        _, _, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_column=gt_column, bs=args.batch_size, only_test_set=True)
 
     print(f'testDataLoader size: {len(testDataLoader)}')
 

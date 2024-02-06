@@ -63,7 +63,7 @@ class Symmetry(Dataset):
 	'''
 
 	NUM_CLASSIFICATION_CLASSES = 2
-	MAX_POINTS = 20000
+	MAX_POINTS = 10000
 
 	#LABELS = ['cassinian-oval', 'cissoid', 'citrus', 'egg', 'geom-petal', 'hypocycloid', 'mouth', 'spiral']
 	LABELS = ['astroid', 'geometric_petal']
