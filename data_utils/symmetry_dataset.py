@@ -19,13 +19,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 pd.options.display.precision = 3
 
-'''
 from .mnist_dataset import show_3d_image as mnist_show_3d_image
 from .mnist_dataset import transform_img2pc, get_random_sample, show_number_of_points_histogram
-'''
 
+'''
 from mnist_dataset import show_3d_image as mnist_show_3d_image
 from mnist_dataset import transform_img2pc, get_random_sample, show_number_of_points_histogram
+'''
 
 def show_3d_image(points, label):
 	return mnist_show_3d_image(points, label)
@@ -275,7 +275,7 @@ def read_and_save_dataset_partitions(dataset_path):
 	save_dataset(train_dataset, './', 'train')
 	return train_dataset, valid_dataset, test_dataset
 
-def create_symmetry_dataloaders(symmetry_path, bs, gt_column=None, only_test_set=False, validation_and_test_sets=False):
+def create_symmetry_dataloaders(symmetry_path, bs, gt_column=None, only_test_set=False, valid_and_test_sets=False):
 	train_dataset,    val_dataset,    test_dataset    = None, None, None
 	train_dataloader, val_dataloader, test_dataloader = None, None, None
 
@@ -284,9 +284,9 @@ def create_symmetry_dataloaders(symmetry_path, bs, gt_column=None, only_test_set
 
 	if not only_test_set:
 		print('.', end='', flush=True)
-		val_dataset = Symmetry(path=symmetry_path, gt_column=gt_column, partition='validation')
+		val_dataset = Symmetry(path=symmetry_path, gt_column=gt_column, partition='valid')
 		print('.', end='', flush=True)
-		train_dataset = Symmetry(path=symmetry_path, gt_column=gt_column, partition='training')		# keep this one as the last because it's pretty slow
+		train_dataset = Symmetry(path=symmetry_path, gt_column=gt_column, partition='train')		# keep this one as the last because it's pretty slow
 	else:
 		print(f'Warning: using only test set for dataloaders...')
 
@@ -301,11 +301,11 @@ def create_symmetry_dataloaders(symmetry_path, bs, gt_column=None, only_test_set
 		train_dataloader = test_dataloader
 		val_dataloader   = test_dataloader
 
-	if validation_and_test_sets:
+	if valid_and_test_sets:
 		print('.', end='', flush=True)
-		val_dataset    = Symmetry(path=symmetry_path, gt_column=gt_column, partition='validation')
+		val_dataset    = Symmetry(path=symmetry_path, gt_column=gt_column, partition='valid')
 		val_dataloader = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
-		print(f'Warning: using only validation and test set for dataloaders...')
+		print(f'Warning: using only valid and test set for dataloaders...')
 
 	return train_dataloader, val_dataloader, test_dataloader
 

@@ -17,9 +17,9 @@ from pathlib import Path
 
 from torchinfo import summary
 
-from data_utils.mnist_dataset    import MNIST3D, create_3dmnist_dataloaders,  show_3d_image, get_random_sample
-from data_utils.curveml_dataset  import CurveML, create_curveml_dataloaders,  show_one_batch
-from data_utils.symmetry_dataset import CurveML, create_symmetry_dataloaders, show_one_batch
+from data_utils.mnist_dataset    import MNIST3D,  create_3dmnist_dataloaders,  show_3d_image, get_random_sample
+from data_utils.curveml_dataset  import CurveML,  create_curveml_dataloaders,  show_one_batch
+from data_utils.symmetry_dataset import Symmetry, create_symmetry_dataloaders, show_one_batch
 
 '''
 cmdlines:
