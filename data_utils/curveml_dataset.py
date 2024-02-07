@@ -87,24 +87,24 @@ class CurveML(Dataset):
 		angle,trans_x,trans_y,a,b,n_petals = row['angle'],row['trans_x'],row['trans_y'],row['a'],row['b'],row['n_petals']
 
 		if debug:
-			print(f'__getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {fpath = } - {lbl = }')
+			print(f'1. __getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {fpath = } - {lbl = }')
 		points = np.hstack((points, np.zeros((points.shape[0], 1))))
 		if debug:
-			print(f'__getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {fpath = } - {lbl = }')
-			print(f'__getitem__() idx: {idx} - {angle = } - {trans_x = } - {trans_y = } - {a = } - {b = } - {n_petals = }')
+			print(f'2. __getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {fpath = } - {lbl = }')
+			print(f'3. __getitem__() idx: {idx} - {angle = } - {trans_x = } - {trans_y = } - {a = } - {b = } - {n_petals = }')
 
 		if self.max_points - points.shape[0] > 0:
 			# Duplicate points
 			sampling_indices = np.random.choice(points.shape[0], self.max_points - points.shape[0])
 			if debug:
-				print(f'__getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
+				print(f'4. __getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
 			new_points = points[sampling_indices, : ]
 			points = np.concatenate((points, new_points), axis=0)
 		else:
 			# sample points
 			sampling_indices = np.random.choice(points.shape[0], self.max_points)
 			if debug:
-				print(f'__getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
+				print(f'5. __getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
 			points = points[sampling_indices, :]
 
 		points = points.astype(np.float32)
@@ -192,21 +192,22 @@ def read_curveml_dataset(path):
 
 	return dataset
 
-def save_dataset(dataset, path, fname):
-	print(f'Writing uncompressed dataset...')
-	with open(Path(path) / Path(str(fname) + '.pickle'), 'wb') as fhandle:
-		pickle.dump(dataset, fhandle)
+def save_dataset(dataset, path, fname, also_pickle=False):
+	if also_pickle:
+		print(f'Writing uncompressed dataset...')
+		with open(Path(path) / Path(str(fname) + '.pickle'), 'wb') as fhandle:
+			pickle.dump(dataset, fhandle)
 	print(f'Writing compressed dataset...')
 	with lzma.open(Path(path) / Path(str(fname) + '.xz'), 'wb') as fhandle:
 		pickle.dump(dataset, fhandle)
 
 def save_dataset_partitions(dataset_path):
 	test_dataset     = read_curveml_dataset(dataset_path / 'test')
-	save_dataset(test_dataset, './', 'test')
+	save_dataset(test_dataset, './',  'test'      , also_pickle=False)
 	valid_dataset    = read_curveml_dataset(dataset_path / 'validation')
-	save_dataset(valid_dataset, './', 'validation')
+	save_dataset(valid_dataset, './', 'validation', also_pickle=False)
 	train_dataset    = read_curveml_dataset(dataset_path / 'training')
-	save_dataset(train_dataset, './', 'training')
+	save_dataset(train_dataset, './', 'training'  , also_pickle=False)
 	return train_dataset, valid_dataset, test_dataset
 
 def create_curveml_dataloaders(curveml_path, bs, gt_column=None, only_test_set=False, validation_and_test_sets=False):
