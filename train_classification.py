@@ -28,6 +28,15 @@ from data_utils.mnist_dataset    import MNIST3D,  create_3dmnist_dataloaders,  s
 from data_utils.curveml_dataset  import CurveML,  create_curveml_dataloaders,  show_one_batch
 from data_utils.symmetry_dataset import Symmetry, create_symmetry_dataloaders, show_one_batch
 
+'''
+cmdlines:
+
+./train_classification.py --symmetry_dataset --batch_size 128 --num_classes 2 --model pointnet_cls --log_dir pointnet-nonormal-symmetry-bs128
+
+
+'''
+
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
 sys.path.append(os.path.join(ROOT_DIR, 'models'))

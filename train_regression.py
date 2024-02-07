@@ -24,8 +24,9 @@ from torchinfo import summary
 
 from data_utils.ModelNetDataLoader import ModelNetDataLoader
 
-from data_utils.mnist_dataset   import MNIST3D, create_3dmnist_dataloaders, show_3d_image, get_random_sample
-from data_utils.curveml_dataset import CurveML, create_curveml_dataloaders, show_one_batch
+from data_utils.mnist_dataset    import MNIST3D,  create_3dmnist_dataloaders,  show_3d_image, get_random_sample
+from data_utils.curveml_dataset  import CurveML,  create_curveml_dataloaders,  show_one_batch
+from data_utils.symmetry_dataset import Symmetry, create_symmetry_dataloaders, show_one_batch
 
 '''
 cmdlines:
@@ -74,6 +75,7 @@ def parse_args():
     parser.add_argument('--use_uniform_sample', action='store_true', default=False, help='use uniform sampiling')
     parser.add_argument('--mnist_dataset', action='store_true', default=False, help='use the 3D MNIST dataset')
     parser.add_argument('--curveml_dataset', action='store_true', default=False, help='use the CurveML dataset')
+    parser.add_argument('--symmetry_dataset', action='store_true', default=False, help='use the Symmetry dataset')
     parser.add_argument('--show_one_batch', action='store_true', default=False, help='show one batch before start training')
     parser.add_argument('--only_test_set', action='store_true', default=False, help='only use test set for a very quick run (perfect to see if the model is learning)')
     return parser.parse_args()
@@ -224,6 +226,12 @@ def main(args):
         gt_column = args.gt_column if args.gt_column is not None else 'label'
         log_string(f'Using column {gt_column} as ground truth')
         trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(curveml_path, gt_column=gt_column, bs=args.batch_size, only_test_set=args.only_test_set)
+    elif args.symmetry_dataset:
+        log_string('Loading the Symmetry dataset...')
+        symmetry_path = Path('./data/Symmetry')
+        gt_column = args.gt_column if args.gt_column is not None else 'label'
+        log_string(f'Using column {gt_column} as ground truth')
+        trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_column=gt_column, bs=args.batch_size, only_test_set=args.only_test_set)
 
     log_string(f'trainDataLoader size (in batches): {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
 
@@ -236,6 +244,8 @@ def main(args):
         shutil.copy('data_utils/mnist_dataset.py', str(exp_dir))
     if args.curveml_dataset:
         shutil.copy('data_utils/curveml_dataset.py', str(exp_dir))
+    if args.symmetry_dataset:
+        shutil.copy('data_utils/symmetry_dataset.py', str(exp_dir))
     shutil.copy('./train_regression.py', str(exp_dir))
 
     y_range = [args.y_range_min, args.y_range_max] if args.y_range_min != -1. and args.y_range_max != -1. else None

@@ -74,7 +74,7 @@ class Symmetry(Dataset):
 		#self.vocab      = [[], labels]			# because of: ```if is_listy(self.vocab): self.vocab = self.vocab[-1]```
 		self.add_noise  = add_noise
 		self.dataset    = load_dataset(path, partition + '.xz')
-		self.gt_column  = gt_column			# e.g. 'label', 'angle', 'trans_x', 'trans_y', ...
+		self.gt_column  = gt_column			# e.g. 'type', 'popx', 'popy', 'popz', 'nx', 'ny', 'nz', 'rot' (only for the first row in the gt dataframe)
 		self.max_points = max_points
 
 	def __len__(self):
@@ -129,7 +129,11 @@ class Symmetry(Dataset):
 			if self.gt_column == 'label':
 				gt = lbl
 			else:
-				gt = row[self.gt_column]
+				if debug:
+					print(f'5. __getitem__() self.gt_column: {self.gt_column} - {row = }')
+				gt = row['gt'][self.gt_column][0]
+				if debug:
+					print(f'6. __getitem__() self.gt_column: {self.gt_column} - row[\'gt\'][self.gt_column][0]: {row["gt"][self.gt_column][0]}')
 		else:
 			gt = lbl #row['label']
 		return points, gt
