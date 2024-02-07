@@ -19,13 +19,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 pd.options.display.precision = 3
 
-from .mnist_dataset import show_3d_image as mnist_show_3d_image
-from .mnist_dataset import transform_img2pc, get_random_sample, show_number_of_points_histogram
+if __name__ == '__main__':
+	from mnist_dataset import show_3d_image as mnist_show_3d_image
+	from mnist_dataset import transform_img2pc, get_random_sample, show_number_of_points_histogram
+else:
+	from .mnist_dataset import show_3d_image as mnist_show_3d_image
+	from .mnist_dataset import transform_img2pc, get_random_sample, show_number_of_points_histogram
 
-'''
-from mnist_dataset import show_3d_image as mnist_show_3d_image
-from mnist_dataset import transform_img2pc, get_random_sample, show_number_of_points_histogram
-'''
 
 def show_3d_image(points, label):
 	return mnist_show_3d_image(points, label)
@@ -63,7 +63,7 @@ class Symmetry(Dataset):
 	'''
 
 	NUM_CLASSIFICATION_CLASSES = 2
-	MAX_POINTS = 10000
+	MAX_POINTS = 1000
 
 	#LABELS = ['cassinian-oval', 'cissoid', 'citrus', 'egg', 'geom-petal', 'hypocycloid', 'mouth', 'spiral']
 	LABELS = ['astroid', 'geometric_petal']
@@ -81,7 +81,7 @@ class Symmetry(Dataset):
 		return len(self.dataset)
 
 	def __getitem__(self, idx, debug=False):
-		debug = True
+		#debug = True
 		# Dataframe columns: ['angle', 'trans_x', 'trans_y', 'a', 'b', 'n_petals', 'label', 'fpath', 'points']
 		#row = self.dataset.iloc[idx]
 		row = self.dataset[idx]
@@ -91,29 +91,32 @@ class Symmetry(Dataset):
 		#angle,trans_x,trans_y,a,b,n_petals = row['angle'],row['trans_x'],row['trans_y'],row['a'],row['b'],row['n_petals']
 		label, split, points, gt = row['label'], row['split'], row['points'][0], row['gt']
 
+		'''
 		if debug:
-			print(f'__getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {split = } - {lbl = }')
+			print(f'1. __getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {split = } - {lbl = }')
 		points = np.hstack((points, np.zeros((points.shape[0], 1))))
+		'''
+		# The symmetry dataset already contains real 3D point clouds, so no need for the np.hstack as in the CurveML dataset...
 		if debug:
-			print(f'__getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {split = } - {lbl = }')
+			print(f'1. __getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {split = } - {lbl = }')
 			for gt_row in gt.iterrows():
 				idx     = gt_row[0]
 				row_arr = gt_row[1].values
 			#print(f'__getitem__() idx: {idx} - {angle = } - {trans_x = } - {trans_y = } - {a = } - {b = } - {n_petals = }')
-			print(f'__getitem__() idx: {idx} - {label = } - {split = } - {points.shape = } - {gt.shape = } - {row_arr = }')
+			print(f'2. __getitem__() idx: {idx} - {label = } - {split = } - {points.shape = } - {gt.shape = } - {row_arr = }')
 
 		if self.max_points - points.shape[0] > 0:
 			# Duplicate points
 			sampling_indices = np.random.choice(points.shape[0], self.max_points - points.shape[0])
 			if debug:
-				print(f'__getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
+				print(f'3. __getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
 			new_points = points[sampling_indices, : ]
 			points = np.concatenate((points, new_points), axis=0)
 		else:
 			# sample points
 			sampling_indices = np.random.choice(points.shape[0], self.max_points)
 			if debug:
-				print(f'__getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
+				print(f'4. __getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
 			points = points[sampling_indices, :]
 
 		points = points.astype(np.float32)
@@ -121,13 +124,14 @@ class Symmetry(Dataset):
 		if self.add_noise:
 			#points = points + (0.01**0.5)*torch.randn(points.shape[0], points.shape[1])		# high
 			points = points + (0.001**0.5)*torch.randn(points.shape[0], points.shape[1])		# perfect
+
 		if self.gt_column:
 			if self.gt_column == 'label':
 				gt = lbl
 			else:
 				gt = row[self.gt_column]
 		else:
-			gt = row['label']
+			gt = lbl #row['label']
 		return points, gt
 
 	def __getitems__(self, idxs, debug=False):
@@ -258,21 +262,22 @@ def read_symmetry_dataset(path, debug=False):
 
 	return dataset
 
-def save_dataset(dataset, path, fname):
-	print(f'Writing uncompressed dataset...')
-	with open(Path(path) / Path(str(fname) + '.pickle'), 'wb') as fhandle:
-		pickle.dump(dataset, fhandle)
+def save_dataset(dataset, path, fname, also_pickle=False):
+	if also_pickle:
+		print(f'Writing uncompressed dataset...')
+		with open(Path(path) / Path(str(fname) + '.pickle'), 'wb') as fhandle:
+			pickle.dump(dataset, fhandle)
 	print(f'Writing compressed dataset...')
 	with lzma.open(Path(path) / Path(str(fname) + '.xz'), 'wb') as fhandle:
 		pickle.dump(dataset, fhandle)
 
 def read_and_save_dataset_partitions(dataset_path):
 	test_dataset     = read_symmetry_dataset(dataset_path / 'test')
-	save_dataset(test_dataset, './', 'test')
+	save_dataset(test_dataset, './', 'test'  , also_pickle=False)
 	valid_dataset    = read_symmetry_dataset(dataset_path / 'valid')
-	save_dataset(valid_dataset, './', 'valid')
+	save_dataset(valid_dataset, './', 'valid', also_pickle=False)
 	train_dataset    = read_symmetry_dataset(dataset_path / 'train')
-	save_dataset(train_dataset, './', 'train')
+	save_dataset(train_dataset, './', 'train', also_pickle=False)
 	return train_dataset, valid_dataset, test_dataset
 
 def create_symmetry_dataloaders(symmetry_path, bs, gt_column=None, only_test_set=False, valid_and_test_sets=False):
@@ -313,21 +318,21 @@ def create_symmetry_dataloaders(symmetry_path, bs, gt_column=None, only_test_set
 if __name__ == '__main__':
 
 	test_read      = False
-	test_write     = False
+	test_write     = True
 	test_load      = False
 	test_show      = False
-	test_one_batch = True
+	test_one_batch = False
 
 	if test_read:
 		print(f'Testing the read_symmetry_dataset() function...')
-		dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-100')
+		dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
 		test_data = read_symmetry_dataset(dataset_path)
 		print(f'read_symmetry_dataset() complete')
 		sys.exit()
 
 	if test_write:
 		print(f'Testing the read_and_save_dataset_partitions() function...')
-		dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-100')
+		dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
 		read_and_save_dataset_partitions(dataset_path)
 		print(f'read_and_save_dataset_partitions() complete')
 		sys.exit()

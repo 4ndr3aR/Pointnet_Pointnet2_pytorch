@@ -32,6 +32,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
 sys.path.append(os.path.join(ROOT_DIR, 'models'))
 
+logger = logging.getLogger("Model")
+
+def log_string(str):
+    logger.info(str)
+    print(str)
+
 def parse_args():
     '''PARAMETERS'''
     parser = argparse.ArgumentParser('training')
@@ -93,10 +99,6 @@ def test(model, loader, num_class=40):
 
 
 def main(args):
-    def log_string(str):
-        logger.info(str)
-        print(str)
-
     '''HYPER PARAMETER'''
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
@@ -119,7 +121,7 @@ def main(args):
 
     '''LOG'''
     args = parse_args()
-    logger = logging.getLogger("Model")
+    #logger = logging.getLogger("Model")
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     file_handler = logging.FileHandler('%s/%s.txt' % (log_dir, args.model))
@@ -145,7 +147,7 @@ def main(args):
         #gt_column = args.gt_column if args.gt_column is not None and args.gt_column != 'none' else 'label'
         #print(f'Using column: {gt_column} as ground truth...')
 
-    print(f'trainDataLoader size: {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
+    log_string(f'trainDataLoader size (in batches): {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
 
     '''MODEL LOADING'''
     num_class = args.num_classes
@@ -156,6 +158,8 @@ def main(args):
     	shutil.copy('data_utils/mnist_dataset.py', str(exp_dir))
     if args.curveml_dataset:
     	shutil.copy('data_utils/curveml_dataset.py', str(exp_dir))
+    if args.symmetry_dataset:
+    	shutil.copy('data_utils/symmetry_dataset.py', str(exp_dir))
     shutil.copy('./train_classification.py', str(exp_dir))
 
     classifier = model.get_model(num_class, normal_channel=args.use_normals)
@@ -171,6 +175,7 @@ def main(args):
     #img, lbl = get_random_sample(trainDataLoader.dataset)
     one_batch = next(iter(trainDataLoader))
     print(f'one_batch: {len(one_batch)} - {one_batch[0].shape}')
+    print(f'one_batch: {one_batch = }')
     one_batch_data  = one_batch[0]
     one_batch_label = one_batch[1]
     summary(classifier, input_data=torch.transpose(one_batch_data, 1, 2).cuda())
@@ -220,6 +225,9 @@ def main(args):
             points[:, :, 0:3] = provider.shift_point_cloud(points[:, :, 0:3])
             points = torch.Tensor(points)
             points = points.transpose(2, 1)
+
+            #print(type(points))
+            #print(type(target))
 
             if not args.use_cpu:
                 points, target = points.cuda(), target.cuda()

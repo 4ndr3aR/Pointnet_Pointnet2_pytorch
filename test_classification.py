@@ -26,6 +26,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
 sys.path.append(os.path.join(ROOT_DIR, 'models'))
 
+logger = logging.getLogger("Model")
 
 def parse_args():
     '''PARAMETERS'''
@@ -114,7 +115,7 @@ def main(args):
 
     '''LOG'''
     args = parse_args()
-    logger = logging.getLogger("Model")
+    #logger = logging.getLogger("Model")
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     file_handler = logging.FileHandler('%s/eval.txt' % experiment_dir)
