@@ -81,7 +81,7 @@ class Symmetry(Dataset):
 		return len(self.dataset)
 
 	def __getitem__(self, idx, debug=False):
-		#debug = True
+		debug = True
 		# Dataframe columns: ['angle', 'trans_x', 'trans_y', 'a', 'b', 'n_petals', 'label', 'fpath', 'points']
 		#row = self.dataset.iloc[idx]
 		row = self.dataset[idx]
@@ -126,14 +126,53 @@ class Symmetry(Dataset):
 			points = points + (0.001**0.5)*torch.randn(points.shape[0], points.shape[1])		# perfect
 
 		if self.gt_column:
+			if isinstance(self.gt_column, list) and len(self.gt_column) == 1:
+				self.gt_column = self.gt_column[0]
 			if self.gt_column == 'label':
 				gt = lbl
 			else:
 				if debug:
 					print(f'5. __getitem__() self.gt_column: {self.gt_column} - {row = }')
-				gt = row['gt'][self.gt_column][0]
+				gt_df     = row['gt']
+				gt_df_col = gt_df[self.gt_column]
 				if debug:
-					print(f'6. __getitem__() self.gt_column: {self.gt_column} - row[\'gt\'][self.gt_column][0]: {row["gt"][self.gt_column][0]}')
+					print(f'6. __getitem__() self.gt_column: {self.gt_column} - gt_df_col: {gt_df_col}')
+				if isinstance(self.gt_column, str):
+					if self.gt_column in ['popx', 'popy', 'popz']:
+						gt = gt_df_col.unique()[0]				# there is always some difference between axis and plane points but it's ~1e-6
+					else:
+						print(f'WARNING. Returning only the first row of the GT column for regression testing purposes!')
+						gt = gt_df_col[0]					# this is only for test purposes and should have some warning
+					if debug:
+						print(f'7. __getitem__() self.gt_column: {self.gt_column} - gt_df_col.values:\n{gt_df_col.values}')
+				elif isinstance(self.gt_column, list):
+					gt_cls = None			# class, categorical, one for each figure
+					gt_arr = []			# popx, popy, popz, just three float for each figure
+					gt_mat = []			# nx, ny, nz, three float for each symmetry
+					gt_cat = []			# type, rot, categorical*, one for each symmetry
+									# *we observe that, after a .fillna(-1), there are only 6 possible values for rot
+									# in the dataset: [-1.0, 0.628319, 0.785398, 1.047198, 1.570796, 3.141593] ==
+									# == [-1, π/5, π/4, π/3, π/2, π] so we can encode them just as [0, 5, 4, 3, 2, 1]
+					gt_mat_tmp = []
+					for idx,col in enumerate(self.gt_column):
+						gt_df_col_vals = gt_df[col].values
+						print(f'6.{idx}. __getitem__() self.gt_column: {self.gt_column} - gt_df[col].values: {gt_df_col_vals}')
+						if 'pop' in col:
+							gt_arr.append(gt_df[col].unique()[0])
+						elif 'rot' in col:
+							gt_cat.append(list(gt_df_col_vals))
+						elif 'type' in col:
+							gt_cat.append([0 if val == 'plane' else 1 for val in list(gt_df_col_vals)])
+						elif 'cls' in col or 'class' in col:
+							gt_cls = lbl
+						else:
+							gt_mat_tmp.append(list(gt_df_col_vals))
+					gt_mat.append(gt_mat_tmp)
+					if debug:
+						print(f'7. __getitem__() self.gt_column: {self.gt_column}\ngt_arr: {gt_arr}\ngt_mat: {gt_mat}\ngt_cat: {gt_cat}')
+					#gt = gt_df_col.values
+				if debug:
+					print(f'9. __getitem__() self.gt_column: {self.gt_column} - gt_df_col.values[0]: {gt_df_col.values[0]}')
 		else:
 			gt = lbl #row['label']
 		return points, gt

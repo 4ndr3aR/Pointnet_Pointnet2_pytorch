@@ -61,9 +61,11 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=24, help='batch size in training')
     parser.add_argument('--model', default='pointnet_cls', help='model name [default: pointnet_cls]')
     parser.add_argument('--num_classes', default=40, type=int, choices=[1, 8, 10, 40],  help='training on ModelNet10/40')
-    parser.add_argument('--y_range_min', default=-1.,  type=float, help='min value to pass to SigmoidRange class')
-    parser.add_argument('--y_range_max', default=-1.,  type=float, help='max value to pass to SigmoidRange class')
-    parser.add_argument('--gt_column', default='none',  type=str, help='max value to pass to SigmoidRange class')
+    #parser.add_argument('--y_range_min', default=-1.,  type=float, help='min value to pass to SigmoidRange class')
+    #parser.add_argument('--y_range_max', default=-1.,  type=float, help='max value to pass to SigmoidRange class')
+    parser.add_argument('--y_range_min', default=-1., nargs='+', type=float, help='min value to pass to SigmoidRange class (can be a list of floats)')
+    parser.add_argument('--y_range_max', default=-1., nargs='+', type=float, help='max value to pass to SigmoidRange class (can be a list of floats)')
+    parser.add_argument('--gt_column', default='none', nargs='+', type=str, help='column to use as ground truth (can be a list of strings)')
     parser.add_argument('--epoch', default=200, type=int, help='number of epoch in training')
     parser.add_argument('--learning_rate', default=0.001, type=float, help='learning rate in training')
     parser.add_argument('--num_point', type=int, default=1024, help='Point Number')
@@ -248,6 +250,10 @@ def main(args):
         shutil.copy('data_utils/symmetry_dataset.py', str(exp_dir))
     shutil.copy('./train_regression.py', str(exp_dir))
 
+    if isinstance(args.y_range_min, list):
+        args.y_range_min = float(args.y_range_min[0]) if len(args.y_range_min) == 1. else args.y_range_min		# with nargs, we always receive a list
+    if isinstance(args.y_range_max, list):
+        args.y_range_max = float(args.y_range_max[0]) if len(args.y_range_max) == 1. else args.y_range_max		# check if it's a list or not and convert
     y_range = [args.y_range_min, args.y_range_max] if args.y_range_min != -1. and args.y_range_max != -1. else None
     if y_range is not None:
         log_string(f'Received y_range: {y_range} with type: {type(y_range[0])} - {type(y_range[1])}')
