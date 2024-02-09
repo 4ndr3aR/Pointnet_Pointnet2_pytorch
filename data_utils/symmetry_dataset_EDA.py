@@ -17,6 +17,10 @@ for idx,dat in enumerate(data):
 	#print(idx, gt_val)
 	#for col in ['type', 'popx', 'popy', 'popz', 'nx', 'ny', 'nz', 'rot']:
 	#for col in ['popx', 'popy', 'popz']:
+
+	gt_val_len = gt_val.shape[0]
+
+	print(f'[{idx}] has {gt_val_len} rows of ground truth values')
 	for col in ['rot']:
 		uniq = gt_val[col].unique()
 
