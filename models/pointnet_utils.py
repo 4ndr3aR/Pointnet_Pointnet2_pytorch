@@ -134,7 +134,7 @@ class PointNetEncoder(nn.Module):
             return torch.cat([x, pointfeat], 1), trans, trans_feat
 
 
-def feature_transform_reguliarzer(trans):
+def feature_transform_regularizer(trans):
     d = trans.size()[1]
     I = torch.eye(d)[None, :, :]
     if trans.is_cuda:
