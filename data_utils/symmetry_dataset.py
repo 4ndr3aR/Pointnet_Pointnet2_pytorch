@@ -16,6 +16,8 @@ from numpy import genfromtxt
 from torch.utils.data import Dataset, DataLoader, random_split
 import matplotlib.pyplot as plt
 
+from collections import Counter			# just to subtract lists of strings
+
 import pandas as pd
 pd.options.display.precision = 3
 
@@ -68,13 +70,13 @@ class Symmetry(Dataset):
 	#LABELS = ['cassinian-oval', 'cissoid', 'citrus', 'egg', 'geom-petal', 'hypocycloid', 'mouth', 'spiral']
 	LABELS = ['astroid', 'geometric_petal']
 
-	def __init__(self, path, partition, gt_column=None, max_points=MAX_POINTS, labels=LABELS, add_noise=False):
+	def __init__(self, path, partition, gt_columns=None, max_points=MAX_POINTS, labels=LABELS, add_noise=False):
 		self.path       = path
 		self.labels     = labels
 		#self.vocab      = [[], labels]			# because of: ```if is_listy(self.vocab): self.vocab = self.vocab[-1]```
 		self.add_noise  = add_noise
 		self.dataset    = load_dataset(path, partition + '.xz')
-		self.gt_column  = gt_column			# e.g. 'type', 'popx', 'popy', 'popz', 'nx', 'ny', 'nz', 'rot' (only for the first row in the gt dataframe)
+		self.gt_columns = gt_columns			# e.g. 'type', 'popx', 'popy', 'popz', 'nx', 'ny', 'nz', 'rot' (only for the first row in the gt dataframe)
 		self.max_points = max_points
 
 	def __len__(self):
@@ -84,6 +86,7 @@ class Symmetry(Dataset):
 		debug = True
 		# Dataframe columns: ['angle', 'trans_x', 'trans_y', 'a', 'b', 'n_petals', 'label', 'fpath', 'points']
 		#row = self.dataset.iloc[idx]
+		gt_columns = self.gt_columns
 		row = self.dataset[idx]
 		points,label,split = row['points'],row['label'],row['split']
 		lbl = torch.tensor(self.labels.index(label))
@@ -125,27 +128,30 @@ class Symmetry(Dataset):
 			#points = points + (0.01**0.5)*torch.randn(points.shape[0], points.shape[1])		# high
 			points = points + (0.001**0.5)*torch.randn(points.shape[0], points.shape[1])		# perfect
 
-		if self.gt_column:
-			if isinstance(self.gt_column, list) and len(self.gt_column) == 1:
-				self.gt_column = self.gt_column[0]
-			if self.gt_column == 'label':
+		if gt_columns:
+			if isinstance(gt_columns, list) and len(gt_columns) == 1:
+				gt_columns = gt_columns[0]
+			if gt_columns == 'label':
 				gt = lbl
 			else:
+				if isinstance(gt_columns, list):
+					if 'cls' in gt_columns or 'class' in gt_columns:			# clean up gt_columns so it can be used to directly address gt_df
+						gt_columns = list((Counter(gt_columns) - Counter(['cls', 'class'])).elements())		# this is a very pythonic list subtraction
 				if debug:
-					print(f'5. __getitem__() self.gt_column: {self.gt_column} - {row = }')
+					print(f'5. __getitem__() gt_columns: {gt_columns} - {row = }')
 				gt_df     = row['gt']
-				gt_df_col = gt_df[self.gt_column]
+				gt_df_col = gt_df[gt_columns]
 				if debug:
-					print(f'6. __getitem__() self.gt_column: {self.gt_column} - gt_df_col: {gt_df_col}')
-				if isinstance(self.gt_column, str):
-					if self.gt_column in ['popx', 'popy', 'popz']:
+					print(f'6. __getitem__() gt_columns: {gt_columns} - gt_df_col: {gt_df_col}')
+				if isinstance(gt_columns, str):
+					if gt_columns in ['popx', 'popy', 'popz']:
 						gt = gt_df_col.unique()[0]				# there is always some difference between axis and plane points but it's ~1e-6
 					else:
 						print(f'WARNING. Returning only the first row of the GT column for regression testing purposes!')
 						gt = gt_df_col[0]					# this is only for test purposes and should have some warning
 					if debug:
-						print(f'7. __getitem__() self.gt_column: {self.gt_column} - gt_df_col.values:\n{gt_df_col.values}')
-				elif isinstance(self.gt_column, list):
+						print(f'7. __getitem__() gt_columns: {gt_columns} - gt_df_col.values:\n{gt_df_col.values}')
+				elif isinstance(gt_columns, list):
 					gt_cls = None			# class, categorical, one for each figure
 					gt_arr = []			# popx, popy, popz, just three float for each figure
 					gt_mat = []			# nx, ny, nz, three float for each symmetry
@@ -154,27 +160,30 @@ class Symmetry(Dataset):
 									# in the dataset: [-1.0, 0.628319, 0.785398, 1.047198, 1.570796, 3.141593] ==
 									# == [-1, π/5, π/4, π/3, π/2, π] so we can encode them just as [0, 5, 4, 3, 2, 1]
 					gt_mat_tmp = []
-					for idx,col in enumerate(self.gt_column):
+					for idx,col in enumerate(gt_columns):
 						gt_df_col_vals = gt_df[col].values
-						print(f'6.{idx}. __getitem__() self.gt_column: {self.gt_column} - gt_df[col].values: {gt_df_col_vals}')
+						print(f'6.{idx}. __getitem__() gt_columns: {gt_columns} - gt_df[{col}].values: {gt_df_col_vals}')
 						if 'pop' in col:
 							gt_arr.append(gt_df[col].unique()[0])
 						elif 'rot' in col:
 							gt_cat.append(list(gt_df_col_vals))
 						elif 'type' in col:
 							gt_cat.append([0 if val == 'plane' else 1 for val in list(gt_df_col_vals)])
-						elif 'cls' in col or 'class' in col:
-							gt_cls = lbl
 						else:
 							gt_mat_tmp.append(list(gt_df_col_vals))
 					gt_mat.append(gt_mat_tmp)
+
+					if 'cls' in self.gt_columns or 'class' in self.gt_columns:			# use the original here!
+						gt_cls = lbl
+
 					if debug:
-						print(f'7. __getitem__() self.gt_column: {self.gt_column}\ngt_arr: {gt_arr}\ngt_mat: {gt_mat}\ngt_cat: {gt_cat}')
-					#gt = gt_df_col.values
+						print(f'7. __getitem__() gt_columns: {gt_columns}\ngt_arr: {gt_arr}\ngt_mat: {gt_mat}\ngt_cat: {gt_cat}\ngt_cls: {gt_cls}')
+					gt = [torch.tensor(gt_arr), torch.tensor(gt_mat), torch.tensor(gt_cat), torch.tensor(gt_cls)]
 				if debug:
-					print(f'9. __getitem__() self.gt_column: {self.gt_column} - gt_df_col.values[0]: {gt_df_col.values[0]}')
+					print(f'9. __getitem__() gt_columns: {gt_columns} - gt_df_col.values[0]: {gt_df_col.values[0]}')
 		else:
 			gt = lbl #row['label']
+		print(f'10. __getitem__() gt_columns: {gt_columns} - returning GT: \n{gt}')
 		return points, gt
 
 	def __getitems__(self, idxs, debug=False):
@@ -323,18 +332,18 @@ def read_and_save_dataset_partitions(dataset_path):
 	save_dataset(train_dataset, './', 'train', also_pickle=False)
 	return train_dataset, valid_dataset, test_dataset
 
-def create_symmetry_dataloaders(symmetry_path, bs, gt_column=None, only_test_set=False, valid_and_test_sets=False):
+def create_symmetry_dataloaders(symmetry_path, bs, gt_columns=None, only_test_set=False, valid_and_test_sets=False):
 	train_dataset,    val_dataset,    test_dataset    = None, None, None
 	train_dataloader, val_dataloader, test_dataloader = None, None, None
 
 	print('.', end='', flush=True)
-	test_dataset = Symmetry(path=symmetry_path, gt_column=gt_column, partition='test')
+	test_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, partition='test')
 
 	if not only_test_set:
 		print('.', end='', flush=True)
-		val_dataset = Symmetry(path=symmetry_path, gt_column=gt_column, partition='valid')
+		val_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, partition='valid')
 		print('.', end='', flush=True)
-		train_dataset = Symmetry(path=symmetry_path, gt_column=gt_column, partition='train')		# keep this one as the last because it's pretty slow
+		train_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, partition='train')		# keep this one as the last because it's pretty slow
 	else:
 		print(f'Warning: using only test set for dataloaders...')
 
@@ -351,7 +360,7 @@ def create_symmetry_dataloaders(symmetry_path, bs, gt_column=None, only_test_set
 
 	if valid_and_test_sets:
 		print('.', end='', flush=True)
-		val_dataset    = Symmetry(path=symmetry_path, gt_column=gt_column, partition='valid')
+		val_dataset    = Symmetry(path=symmetry_path, gt_columns=gt_columns, partition='valid')
 		val_dataloader = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
 		print(f'Warning: using only valid and test set for dataloaders...')
 
@@ -404,7 +413,7 @@ if __name__ == '__main__':
 	if test_one_batch:
 		#symmetry_path = Path('../data/Symmetry')
 		symmetry_path = Path('./')
-		trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_column='label', bs=16, only_test_set=True)
+		trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_columns='label', bs=16, only_test_set=True)
 
 		one_batch = next(iter(testDataLoader))
 		show_one_batch(one_batch)

@@ -65,7 +65,7 @@ def parse_args():
     #parser.add_argument('--y_range_max', default=-1.,  type=float, help='max value to pass to SigmoidRange class')
     parser.add_argument('--y_range_min', default=-1., nargs='+', type=float, help='min value to pass to SigmoidRange class (can be a list of floats)')
     parser.add_argument('--y_range_max', default=-1., nargs='+', type=float, help='max value to pass to SigmoidRange class (can be a list of floats)')
-    parser.add_argument('--gt_column', default='none', nargs='+', type=str, help='column to use as ground truth (can be a list of strings)')
+    parser.add_argument('--gt_columns', default='none', nargs='+', type=str, help='column to use as ground truth (can be a list of strings only with the Symmetry dataset)')
     parser.add_argument('--epoch', default=200, type=int, help='number of epoch in training')
     parser.add_argument('--learning_rate', default=0.001, type=float, help='learning rate in training')
     parser.add_argument('--num_point', type=int, default=1024, help='Point Number')
@@ -225,15 +225,15 @@ def main(args):
     elif args.curveml_dataset:
         log_string('Loading the CurveML dataset...')
         curveml_path = Path('./data/CurveML')
-        gt_column = args.gt_column if args.gt_column is not None else 'label'
-        log_string(f'Using column {gt_column} as ground truth')
-        trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(curveml_path, gt_column=gt_column, bs=args.batch_size, only_test_set=args.only_test_set)
+        gt_columns = args.gt_columns if args.gt_columns is not None else 'label'
+        log_string(f'Using column {gt_columns} as ground truth')
+        trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(curveml_path, gt_columns=gt_columns, bs=args.batch_size, only_test_set=args.only_test_set)
     elif args.symmetry_dataset:
         log_string('Loading the Symmetry dataset...')
         symmetry_path = Path('./data/Symmetry')
-        gt_column = args.gt_column if args.gt_column is not None else 'label'
-        log_string(f'Using column {gt_column} as ground truth')
-        trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_column=gt_column, bs=args.batch_size, only_test_set=args.only_test_set)
+        gt_columns = args.gt_columns if args.gt_columns is not None else 'label'
+        log_string(f'Using column {gt_columns} as ground truth')
+        trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_columns=gt_columns, bs=args.batch_size, only_test_set=args.only_test_set)
 
     log_string(f'trainDataLoader size (in batches): {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
 
