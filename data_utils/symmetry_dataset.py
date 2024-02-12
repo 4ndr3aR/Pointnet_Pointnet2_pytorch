@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
+import sys
+
 import numpy as np
+
 import torch
 import torchvision
 
 #import cv2
-import sys
 
 import lzma
 import pickle
@@ -20,6 +22,48 @@ from collections import Counter			# just to subtract lists of strings
 
 import pandas as pd
 pd.options.display.precision = 3
+
+'''
+import re
+import builtins
+from functools import wraps
+
+original_print = builtins.print
+
+def fprint(print_func, precision=2):
+    @wraps(print_func)
+    def wrapper(*args, **kwargs):
+        def repl(match):
+            float_number = float(match.group(1))
+            #ret = "{" + str(float_number) + ":." + str(precision) + "f}"
+            precision_term = "{:." + str(precision) + "f}"
+            ret = ''.join(precision_term.format(float_number).rjust(precision+3))
+            #original_print(ret)
+            return f"{ret}"
+        
+        new_args = []
+        for arg in args:
+            if isinstance(arg, str):
+                arg = re.sub(r'([-+]?\d*\.\d+([eE][-+]?\d+)?)', repl, arg)
+            new_args.append(arg)
+        
+        return print_func(*new_args, **kwargs)
+    return wrapper
+
+#builtins.print = fprint(print)
+'''
+
+
+def to_precision(lst, precision=2):
+	str_lst = []
+	precision_term = "{:." + str(precision) + "f}"
+	for sublist in lst:
+		for x in sublist:
+			print(f'{type(x) = } - {x = }')
+		str_lst.append(', '.join(precision_term.format(float(x)).rjust(precision+3) for x in sublist))
+	return str_lst
+
+
 
 if __name__ == '__main__':
 	from mnist_dataset import show_3d_image as mnist_show_3d_image
@@ -159,7 +203,7 @@ class Symmetry(Dataset):
 									# *we observe that, after a .fillna(-1), there are only 6 possible values for rot
 									# in the dataset: [-1.0, 0.628319, 0.785398, 1.047198, 1.570796, 3.141593] ==
 									# == [-1, π/5, π/4, π/3, π/2, π] so we can encode them just as [0, 5, 4, 3, 2, 1]
-					gt_mat_tmp = []
+					#gt_mat_tmp = []
 					for idx,col in enumerate(gt_columns):
 						gt_df_col_vals = gt_df[col].values
 						print(f'6.{idx}. __getitem__() gt_columns: {gt_columns} - gt_df[{col}].values: {gt_df_col_vals}')
@@ -170,8 +214,9 @@ class Symmetry(Dataset):
 						elif 'type' in col:
 							gt_cat.append([0 if val == 'plane' else 1 for val in list(gt_df_col_vals)])
 						else:
-							gt_mat_tmp.append(list(gt_df_col_vals))
-					gt_mat.append(gt_mat_tmp)
+							#gt_mat_tmp.append(list(gt_df_col_vals))
+							gt_mat.append(list(gt_df_col_vals))
+					#gt_mat = gt_mat_tmp
 
 					if 'cls' in self.gt_columns or 'class' in self.gt_columns:			# use the original here!
 						gt_cls = lbl
@@ -183,7 +228,7 @@ class Symmetry(Dataset):
 					print(f'9. __getitem__() gt_columns: {gt_columns} - gt_df_col.values[0]: {gt_df_col.values[0]}')
 		else:
 			gt = lbl #row['label']
-		print(f'10. __getitem__() gt_columns: {gt_columns} - returning GT: \n{gt}')
+		print(f'10. __getitem__() gt_columns: {gt_columns} - returning GT with shape: {[list(itm.shape) for itm in gt]} - GT: \n{to_precision(gt)}')
 		return points, gt
 
 	def __getitems__(self, idxs, debug=False):
