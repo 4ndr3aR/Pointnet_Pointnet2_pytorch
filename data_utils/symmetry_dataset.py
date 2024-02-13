@@ -53,7 +53,7 @@ def fprint(print_func, precision=2):
 #builtins.print = fprint(print)
 '''
 
-def to_precision(lst, precision=2, debug=False):
+def to_precision(lst, precision=3, debug=False):
 	if debug:
 		print(f'to_precision() received type: {type(lst)} - lst: {lst}')
 	lst_len = len(lst) if isinstance(lst, list) else (lst.shape[0] if isinstance(lst, torch.Tensor) and len(lst.shape) != 0 else 0)
@@ -182,18 +182,20 @@ class Symmetry(Dataset):
 
 	NUM_CLASSIFICATION_CLASSES = 2
 	MAX_POINTS = 1000
+	MAX_GT_ROWS = 14
 
 	#LABELS = ['cassinian-oval', 'cissoid', 'citrus', 'egg', 'geom-petal', 'hypocycloid', 'mouth', 'spiral']
 	LABELS = ['astroid', 'geometric_petal']
 
-	def __init__(self, path, partition, gt_columns=None, max_points=MAX_POINTS, labels=LABELS, add_noise=False):
-		self.path       = path
-		self.labels     = labels
+	def __init__(self, path, partition, gt_columns=None, max_points=MAX_POINTS, labels=LABELS, max_gt_rows=MAX_GT_ROWS, add_noise=False):
+		self.path        = path
+		self.labels      = labels
 		#self.vocab      = [[], labels]			# because of: ```if is_listy(self.vocab): self.vocab = self.vocab[-1]```
-		self.add_noise  = add_noise
-		self.dataset    = load_dataset(path, partition + '.xz')
-		self.gt_columns = gt_columns			# e.g. 'type', 'popx', 'popy', 'popz', 'nx', 'ny', 'nz', 'rot' (only for the first row in the gt dataframe)
-		self.max_points = max_points
+		self.add_noise   = add_noise
+		self.dataset     = load_dataset(path, partition + '.xz')
+		self.gt_columns  = gt_columns			# e.g. 'type', 'popx', 'popy', 'popz', 'nx', 'ny', 'nz', 'rot' (only for the first row in the gt dataframe)
+		self.max_points  = max_points
+		self.max_gt_rows = max_gt_rows
 
 	def __len__(self):
 		return len(self.dataset)
@@ -277,17 +279,20 @@ class Symmetry(Dataset):
 									# == [-1, π/5, π/4, π/3, π/2, π] so we can encode them just as [0, 5, 4, 3, 2, 1]
 					#gt_mat_tmp = []
 					for idx,col in enumerate(gt_columns):
-						gt_df_col_vals = gt_df[col].values
+						gt_df_col_vals = list(gt_df[col].values)
+						if len(gt_df_col_vals) < self.max_gt_rows:
+							gt_df_col_vals += [-1]*(self.max_gt_rows - len(gt_df_col_vals))
+							
 						print(f'6.{idx}. __getitem__() gt_columns: {gt_columns} - gt_df[{col}].values: {gt_df_col_vals}')
 						if 'pop' in col:
 							gt_arr.append(gt_df[col].unique()[0])
 						elif 'rot' in col:
-							gt_cat.append(list(gt_df_col_vals))
+							gt_cat.append(gt_df_col_vals)
 						elif 'type' in col:
-							gt_cat.append([0 if val == 'plane' else 1 for val in list(gt_df_col_vals)])
+							gt_cat.append([0 if val == 'plane' else 1 for val in gt_df_col_vals])
 						else:
 							#gt_mat_tmp.append(list(gt_df_col_vals))
-							gt_mat.append(list(gt_df_col_vals))
+							gt_mat.append(gt_df_col_vals)
 					#gt_mat = gt_mat_tmp
 
 					if 'cls' in self.gt_columns or 'class' in self.gt_columns:			# use the original here!
@@ -300,7 +305,7 @@ class Symmetry(Dataset):
 					print(f'9. __getitem__() gt_columns: {gt_columns} - gt_df_col.values[0]: {gt_df_col.values[0]}')
 		else:
 			gt = lbl #row['label']
-		print(f'10. __getitem__() gt_columns: {gt_columns} - returning GT with shape: {[list(itm.shape) for itm in gt]} - GT: \n{gt}')
+		#print(f'10. __getitem__() gt_columns: {gt_columns} - returning GT with shape: {[list(itm.shape) for itm in gt]} - GT: \n{gt}')
 		print(f'10. __getitem__() gt_columns: {gt_columns} - returning GT with shape: {[list(itm.shape) for itm in gt]} - GT: \n{to_precision(gt)}')
 		return points, gt
 

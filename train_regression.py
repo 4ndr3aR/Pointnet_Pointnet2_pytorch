@@ -40,6 +40,11 @@ cmdlines:
 ./train_regression.py --curveml_dataset --batch_size 480 --gt_column trans_x --y_range_min -0.8 --y_range_max 0.8 --num_classes 1 --model pointnet_cls --log_dir pointnet-nonormal-curveml-regression-trans_x-bs480 &> pointnet1-nonormals-curveml-regression-trans_x-bs480-train-`currdate`-`currtime`.txt
 ./train_regression.py --curveml_dataset --batch_size 480 --gt_column trans_y --y_range_min -0.8 --y_range_max 0.8 --num_classes 1 --model pointnet_cls --log_dir pointnet-nonormal-curveml-regression-trans_y-bs480 &> pointnet1-nonormals-curveml-regression-trans_y-bs480-train-`currdate`-`currtime`.txt
 
+
+
+./train_regression.py --symmetry_dataset --batch_size 4 --gt_column cls type popx popy popz nx ny nz rot --num_classes 1 --model pointnet_cls --log_dir pointnet-nonormal-symmetry-bs128 --only_test_set
+
+
 '''
 
 
@@ -97,7 +102,7 @@ def test(model, loader, num_class=40):
     for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
 
         if not args.use_cpu:
-            points, target = points.cuda(), target.cuda()
+            points, target = points.cuda(), torch.tensor(target).cuda()
 
         points = points.transpose(2, 1)
         pred, _ = regressor(points)
@@ -326,7 +331,8 @@ def main(args):
             points = points.transpose(2, 1)
 
             if not args.use_cpu:
-                points, target = points.cuda(), target.cuda()
+                print(f'{target =}')
+                points, target = points.cuda(), torch.tensor(target).cuda()
 
             pred, trans_feat = regressor(points)
             if args.y_range_min == -1. and args.y_range_max == -1.:
