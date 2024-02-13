@@ -53,37 +53,48 @@ def fprint(print_func, precision=2):
 #builtins.print = fprint(print)
 '''
 
-def to_precision(lst, precision=2):
-	print(f'to_precision() received type: {type(lst)} - lst: {lst}')
+def to_precision(lst, precision=2, debug=False):
+	if debug:
+		print(f'to_precision() received type: {type(lst)} - lst: {lst}')
 	lst_len = len(lst) if isinstance(lst, list) else (lst.shape[0] if isinstance(lst, torch.Tensor) and len(lst.shape) != 0 else 0)
-	print(f'to_precision() received type: {type(lst)} - {lst_len = } - lst: {lst}')
+	if debug:
+		print(f'to_precision() received type: {type(lst)} - {lst_len = } - lst: {lst}')
 
 	str_lst = []
 	precision_term = "{:." + str(precision) + "f}"
 
 	if isinstance(lst, torch.Tensor) and len(lst.shape) == 0:				# e.g. torch.Tensor(7)
 		#str_data = ', '.join(precision_term.format(float(lst)).rjust(precision+3))
-		str_data = precision_term.format(float(lst)).rjust(precision+3)
-		print(f'to_precision() returning {str_data = }')
+		if 'float' in str(lst.dtype):
+			str_data = precision_term.format(float(lst)).rjust(precision+3)
+		else:
+			str_data = int(lst)
+		if debug:
+			print(f'to_precision() returning {str_data = }')
 		return str_data
 
 	if (isinstance(lst, torch.Tensor) and len(lst.shape) != 0) or (isinstance(lst, list) and len(lst) > 0):
 		if isinstance(lst[0], list) or len(lst[0].shape) != 0:
-			print('passo di qui')
-			return [to_precision(x) for x in lst]
+			if debug:
+				print('to_precision() - list')
+			tmp_lst = [to_precision(x) for x in lst]
+			return '[' + ' '.join(str(x) for x in tmp_lst) + '],\n'
 
 
 	if (isinstance(lst, torch.Tensor) and len(lst.shape) != 0) or (isinstance(lst, list) and len(lst) > 0):
-		print('passo di qua')
+		if debug:
+			print('to_precision() - tensor')
 		#str_lst.append(', '.join(precision_term.format(lst).rjust(precision+3)))
-		str_lst.append(', '.join(precision_term.format(float(x)).rjust(precision+3) for x in lst))
+		#str_lst.append(', '.join(precision_term.format(float(x)).rjust(precision+3) for x in lst))
+		str_lst = '[' + ', '.join(precision_term.format(float(x)).rjust(precision+3) for x in lst) + '],\n'
 		'''
 		for elem in lst:
 			str_lst.append(', '.join(precision_term.format(float(elem)).rjust(precision+3)))
 		'''
 	else:
-		str_lst.append(', '.join(precision_term.format(float(x)).rjust(precision+3) for x in lst))
-	print(f'{str_lst = }')
+		str_lst = ', '.join(precision_term.format(float(x)).rjust(precision+3) for x in lst)
+	if debug:
+		print(f'{str_lst = }')
 	'''
 	for sublist in lst:
 		for x in list(sublist):
@@ -92,7 +103,7 @@ def to_precision(lst, precision=2):
 		[print(type(x)) for x in sublist]
 		str_lst.append(', '.join([precision_term.format(float(x)).rjust(precision+3) for x in sublist]))
 	'''
-	return str_lst
+	return str(str_lst) # .replace('00', '0§0').replace('\'', '').replace('"', '').replace("'", "")
 '''
 def to_precision2(data, precision=2):
 	print(data)
@@ -289,6 +300,7 @@ class Symmetry(Dataset):
 					print(f'9. __getitem__() gt_columns: {gt_columns} - gt_df_col.values[0]: {gt_df_col.values[0]}')
 		else:
 			gt = lbl #row['label']
+		print(f'10. __getitem__() gt_columns: {gt_columns} - returning GT with shape: {[list(itm.shape) for itm in gt]} - GT: \n{gt}')
 		print(f'10. __getitem__() gt_columns: {gt_columns} - returning GT with shape: {[list(itm.shape) for itm in gt]} - GT: \n{to_precision(gt)}')
 		return points, gt
 
