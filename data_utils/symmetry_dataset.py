@@ -53,15 +53,76 @@ def fprint(print_func, precision=2):
 #builtins.print = fprint(print)
 '''
 
-
 def to_precision(lst, precision=2):
+	print(f'to_precision() received type: {type(lst)} - lst: {lst}')
+	lst_len = len(lst) if isinstance(lst, list) else (lst.shape[0] if isinstance(lst, torch.Tensor) and len(lst.shape) != 0 else 0)
+	print(f'to_precision() received type: {type(lst)} - {lst_len = } - lst: {lst}')
+
 	str_lst = []
 	precision_term = "{:." + str(precision) + "f}"
+
+	if isinstance(lst, torch.Tensor) and len(lst.shape) == 0:				# e.g. torch.Tensor(7)
+		#str_data = ', '.join(precision_term.format(float(lst)).rjust(precision+3))
+		str_data = precision_term.format(float(lst)).rjust(precision+3)
+		print(f'to_precision() returning {str_data = }')
+		return str_data
+
+	if (isinstance(lst, torch.Tensor) and len(lst.shape) != 0) or (isinstance(lst, list) and len(lst) > 0):
+		if isinstance(lst[0], list) or len(lst[0].shape) != 0:
+			print('passo di qui')
+			return [to_precision(x) for x in lst]
+
+
+	if (isinstance(lst, torch.Tensor) and len(lst.shape) != 0) or (isinstance(lst, list) and len(lst) > 0):
+		print('passo di qua')
+		#str_lst.append(', '.join(precision_term.format(lst).rjust(precision+3)))
+		str_lst.append(', '.join(precision_term.format(float(x)).rjust(precision+3) for x in lst))
+		'''
+		for elem in lst:
+			str_lst.append(', '.join(precision_term.format(float(elem)).rjust(precision+3)))
+		'''
+	else:
+		str_lst.append(', '.join(precision_term.format(float(x)).rjust(precision+3) for x in lst))
+	print(f'{str_lst = }')
+	'''
 	for sublist in lst:
-		for x in sublist:
+		for x in list(sublist):
 			print(f'{type(x) = } - {x = }')
-		str_lst.append(', '.join(precision_term.format(float(x)).rjust(precision+3) for x in sublist))
+			print(f'{precision_term.format(x).rjust(precision+3) = }')
+		[print(type(x)) for x in sublist]
+		str_lst.append(', '.join([precision_term.format(float(x)).rjust(precision+3) for x in sublist]))
+	'''
 	return str_lst
+'''
+def to_precision2(data, precision=2):
+	print(data)
+def to_precision(data, precision=2):
+	if isinstance(data, float):
+		return "{:.{}f}".format(data, precision) + ", "
+	elif isinstance(data, int):
+		return str(data) + ", "
+	elif isinstance(data, str):
+		return data + ", "
+	elif isinstance(data, (list, tuple)):
+		result = ""
+		for element in data:
+			result += to_precision(element, precision)
+		return '[' + result.rstrip(", ") + '], \n'
+	elif isinstance(data, (np.ndarray, np.matrix)):
+		result = ""
+		for row in data:
+			result += to_precision(row, precision)
+		return '((' + result.rstrip(", ") + ')), \n'
+	elif isinstance(data, dict):
+		result = ""
+		for key, value in data.items():
+			result += "{}: {} ".format(key, to_precision(value, precision))
+		return '{' + result.rstrip(", ") + '}, \n'
+	else:
+		return str(data)
+'''
+
+
 
 
 
