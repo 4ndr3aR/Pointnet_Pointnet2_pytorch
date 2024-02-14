@@ -2,6 +2,8 @@
 
 import sys
 
+import math
+
 import numpy as np
 
 import torch
@@ -201,8 +203,35 @@ class Symmetry(Dataset):
 		self.max_gt_rows     = max_gt_rows
 		self.min_granularity = min_granularity
 
+		self.angle_classes   = [-1, math.pi/5, math.pi/4, math.pi/3, math.pi/2, math.pi] # e.g. NaN, 0.628, 0.785, 1.047, 1.57, 3.14
+
 	def __len__(self):
 		return len(self.dataset)
+
+	def categorify_angles(self, angles, debug=True):
+		if debug:
+			print(f'categorify_angles() received: {angles} - {self.angle_classes = }')
+		if isinstance(angles, pd.DataFrame):
+			angles = angles['rot'].values
+		if isinstance(angles, pd.Series):
+			angles = angles.values
+		if debug:
+			print(f'categorify_angles() processing: {angles}')
+		# Classes are [-1, π/5, π/4, π/3, π/2, π]
+		categorified_angles = [np.nan]*len(angles)
+		#c = pd.Categorical(angles)
+		#print(f'categorify_angles() cat: {c} - {type(c)}')
+		for idx,ang in enumerate(angles):
+			if debug:
+				print(f'categorify_angles() processing: {ang} - {type(ang)} - {math.isnan(ang)}')
+			cl = self.angle_classes.index(ang)
+			categorified_angles[idx] = cl
+
+		if debug:
+			print(f'categorify_angles() returning: {categorified_angles}')
+		#print(f'{idx} - {angles[angles == cl]}')
+		#print(f'categorify_angles() returning: {angles}')
+		return categorified_angles
 
 	def __getitem__(self, idx, debug=False, debug_verbose=False):
 		debug = True
@@ -222,25 +251,24 @@ class Symmetry(Dataset):
 		points = np.hstack((points, np.zeros((points.shape[0], 1))))
 		'''
 		# The symmetry dataset already contains real 3D point clouds, so no need for the np.hstack as in the CurveML dataset...
-		if debug:
+		if debug_verbose:
 			print(f'1. __getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {split = } - {lbl = }')
 			for gt_row in gt.iterrows():
 				idx     = gt_row[0]
 				row_arr = gt_row[1].values
-			#print(f'__getitem__() idx: {idx} - {angle = } - {trans_x = } - {trans_y = } - {a = } - {b = } - {n_petals = }')
-			print(f'2. __getitem__() idx: {idx} - {label = } - {split = } - {points.shape = } - {gt.shape = } - {row_arr = }')
+				print(f'2. __getitem__() idx: {idx} - {label = } - {split = } - {points.shape = } - {gt.shape = } - {row_arr = }')
 
 		if self.max_points - points.shape[0] > 0:
 			# Duplicate points
 			sampling_indices = np.random.choice(points.shape[0], self.max_points - points.shape[0])
-			if debug:
+			if debug_verbose:
 				print(f'3. __getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
 			new_points = points[sampling_indices, : ]
 			points = np.concatenate((points, new_points), axis=0)
 		else:
 			# sample points
 			sampling_indices = np.random.choice(points.shape[0], self.max_points)
-			if debug:
+			if debug_verbose:
 				print(f'4. __getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
 			points = points[sampling_indices, :]
 
@@ -259,7 +287,7 @@ class Symmetry(Dataset):
 				if isinstance(gt_columns, list):
 					if 'cls' in gt_columns or 'class' in gt_columns:			# clean up gt_columns so it can be used to directly address gt_df
 						gt_columns = list((Counter(gt_columns) - Counter(['cls', 'class'])).elements())		# this is a very pythonic list subtraction
-				if debug:
+				if debug_verbose:
 					print(f'5. __getitem__() gt_columns: {gt_columns} - {row = }')
 				gt_df      = row['gt']
 				gt_df_cols = gt_df[gt_columns]
@@ -267,8 +295,16 @@ class Symmetry(Dataset):
 				if debug_verbose:
 					print(f'{float_cols = }')
 					print(f'{(float_cols < 0.0001) & (float_cols > -0.0001) = }')
+
+				#print(f'5.4. __getitem__() gt_columns: {gt_columns} - gt_df_cols: {gt_df_cols}')
 				# wipe floats that are too small (e.g. sometimes nx,ny,nz get littered by -1e-17 and similar numbers)
 				gt_df_cols = float_cols.mask((float_cols < self.min_granularity) & (float_cols > -self.min_granularity), 0)
+				# wipe any remaining NaNs (e.g. in 'rot' for planar symmetries)
+				gt_df_cols = gt_df_cols.fillna(-1)
+
+				#print(f'5.5. __getitem__() gt_columns: {gt_columns} - gt_df_cols: {gt_df_cols}')
+				self.categorify_angles(gt_df_cols.loc[:, gt_df_cols.columns == 'rot'])
+
 				if debug:
 					print(f'6. __getitem__() gt_columns: {gt_columns} - gt_df_cols: {gt_df_cols}')
 				if isinstance(gt_columns, str):
@@ -292,8 +328,8 @@ class Symmetry(Dataset):
 						just_this_gt_col = list(gt_df[col].values)
 						if len(just_this_gt_col) < self.max_gt_rows:
 							just_this_gt_col += [-1]*(self.max_gt_rows - len(just_this_gt_col))
-							
-						print(f'6.{idx}. __getitem__() gt_columns: {gt_columns} - gt_df[{col}].values: {just_this_gt_col}')
+						if debug_verbose:
+							print(f'6.{idx}. __getitem__() gt_columns: {gt_columns} - gt_df[{col}].values: {just_this_gt_col}')
 						if 'pop' in col:
 							gt_arr.append(gt_df[col].unique()[0])
 						elif 'rot' in col:
@@ -308,15 +344,15 @@ class Symmetry(Dataset):
 					if 'cls' in self.gt_columns or 'class' in self.gt_columns:			# use the original here!
 						gt_cls = lbl
 
-					if debug:
+					if debug_verbose:
 						print(f'7. __getitem__() gt_columns: {gt_columns}\ngt_arr: {gt_arr}\ngt_mat: {gt_mat}\ngt_cat: {gt_cat}\ngt_cls: {gt_cls}')
 					gt = [torch.tensor(gt_arr), torch.tensor(gt_mat), torch.tensor(gt_cat), torch.tensor(gt_cls)]
-				if debug:
-					print(f'9. __getitem__() gt_columns: {gt_columns} - gt_df_cols.values[0]: {gt_df_cols.values[0]}')
+				if debug_verbose:
+					print(f'8. __getitem__() gt_columns: {gt_columns} - gt_df_cols.values[0]: {gt_df_cols.values[0]}')
 		else:
 			gt = lbl #row['label']
-		#print(f'10. __getitem__() gt_columns: {gt_columns} - returning GT with shape: {[list(itm.shape) for itm in gt]} - GT: \n{gt}')
-		print(f'10. __getitem__() gt_columns: {gt_columns} - returning GT with shape: {[list(itm.shape) for itm in gt]} - GT: \n{to_precision(gt)}')
+		if debug:
+			print(f'9. __getitem__() {gt_columns = } - returning GT with shape: {[list(itm.shape) for itm in gt]} - GT: \n{to_precision(gt)}')
 		return points, gt
 
 	def __getitems__(self, idxs, debug=False):
