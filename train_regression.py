@@ -330,18 +330,34 @@ def main(args):
             points = torch.Tensor(points)
             points = points.transpose(2, 1)
 
-            if not args.use_cpu:
-                print(f'{target =}')
-                points, target = points.cuda(), torch.tensor(target).cuda()
+            if not args.symmetry_dataset:
+                if not args.use_cpu:
+                    points, target = points.cuda(), torch.tensor(target).cuda()
 
-            pred, trans_feat = regressor(points)
-            if args.y_range_min == -1. and args.y_range_max == -1.:
-                loss = criterion(pred, target.long(), trans_feat)
-                pred_choice = pred.data.max(1)[1]
-                correct = pred_choice.eq(target.long().data).cpu().sum()
-                mean_correct.append(correct.item() / float(points.size()[0]))
+                pred, trans_feat = regressor(points)
+                if args.y_range_min == -1. and args.y_range_max == -1.:
+                    loss = criterion(pred, target.long(), trans_feat)
+                    pred_choice = pred.data.max(1)[1]
+                    correct = pred_choice.eq(target.long().data).cpu().sum()
+                    mean_correct.append(correct.item() / float(points.size()[0]))
+                else:
+                    loss = criterion(pred, target.float(), trans_feat)
             else:
-                loss = criterion(pred, target.float(), trans_feat)
+                if not args.use_cpu:
+                    points = points.cuda()
+                    for idx,tgt in enumerate(target):
+                        print(f'cpu  target[{idx}]: {tgt}')
+                        tgt = torch.tensor(tgt).cuda()
+                        print(f'cuda target[{idx}]: {tgt}')
+
+                pred, trans_feat = regressor(points)
+                if args.y_range_min == -1. and args.y_range_max == -1.:
+                    loss = criterion(pred, target.long(), trans_feat)
+                    pred_choice = pred.data.max(1)[1]
+                    correct = pred_choice.eq(target.long().data).cpu().sum()
+                    mean_correct.append(correct.item() / float(points.size()[0]))
+                else:
+                    loss = criterion(pred, target.float(), trans_feat)
 
             loss.backward()
             optimizer.step()

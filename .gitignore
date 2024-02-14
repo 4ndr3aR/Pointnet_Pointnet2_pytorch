@@ -112,3 +112,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Pointnet_Pointnet2_pytorch logs
+log/
