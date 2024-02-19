@@ -208,7 +208,7 @@ class Symmetry(Dataset):
 	def __len__(self):
 		return len(self.dataset)
 
-	def categorify_angles(self, angles, debug=True):
+	def categorify_angles(self, angles, debug=False):
 		if debug:
 			print(f'categorify_angles() received: {angles} - {self.angle_classes = }')
 		if isinstance(angles, pd.DataFrame):
@@ -234,7 +234,7 @@ class Symmetry(Dataset):
 		return categorified_angles
 
 	def __getitem__(self, idx, debug=False, debug_verbose=False):
-		debug = True
+		#debug = True
 		# Dataframe columns: ['angle', 'trans_x', 'trans_y', 'a', 'b', 'n_petals', 'label', 'fpath', 'points']
 		#row = self.dataset.iloc[idx]
 		gt_columns = self.gt_columns
@@ -328,14 +328,14 @@ class Symmetry(Dataset):
 						just_this_gt_col = list(gt_df[col].values)
 						if len(just_this_gt_col) < self.max_gt_rows:						# pad with -1
 							just_this_gt_col += [-1]*(self.max_gt_rows - len(just_this_gt_col))
-						if debug_verbose or True:
+						if debug_verbose:
 							print(f'7.{idx}. __getitem__() gt_columns: {gt_columns} - gt_df[{col}].values: {just_this_gt_col}')
 						if 'pop' in col:
 							gt_arr.append(gt_df[col].unique()[0])
 						elif 'rot' in col:
 							#gt_cat.append(just_this_gt_col)
 							cat_angles       += [-1]*(self.max_gt_rows - len(list(gt_df[col].values)))	# pad with -1
-							print(f'§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§ {cat_angles = }')
+							#print(f'§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§ {cat_angles = }')
 							gt_cat.append(cat_angles)
 						elif 'type' in col:
 							gt_cat.append([0 if val == 'plane' else 1 if val == 'axis' else -1 for val in just_this_gt_col])

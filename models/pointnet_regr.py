@@ -225,11 +225,24 @@ class get_loss(torch.nn.Module):
 					elif isinstance(tgt, l):
 						print(f'get_loss.forward() - list   target[{idx}].len  : {len(tgt)}')
 			print(f'get_loss.forward() - pred: {pred} - target: {target}')
-			pred = pred.squeeze(1)
-			loss = F.mse_loss(pred, target)
+			#pred = pred.squeeze(1)
+			#loss = F.mse_loss(pred, target)
+
+			loss_lst = []
+
+			for idx,pr in enumerate(pred):
+				tgt = target[idx].reshape(pr.shape)
+				loss_itm = F.mse_loss(pr, tgt.float())
+				print(f'get_loss.forward() - loss_itm[{idx}]: {loss_itm}')
+				loss_lst.append(loss_itm)
+
+			loss = sum(loss_lst)
+			print(f'get_loss.forward() - loss_lst: {loss_lst} - final loss: {loss}')
 		else:
 			loss = F.nll_loss(pred, target)
 		mat_diff_loss = feature_transform_regularizer(trans_feat)
 
 		total_loss = loss + mat_diff_loss * self.mat_diff_loss_scale
-		return total_loss
+		#total_loss = total_loss.float()
+		print(f'get_loss.forward() - total_loss: {total_loss} - type(total_loss): {type(total_loss)} - dtype(total_loss): {total_loss.dtype}')
+		return total_loss.float()

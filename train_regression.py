@@ -123,53 +123,75 @@ def test(model, loader, num_class=40):
     return instance_acc, class_acc
 
 def test_regression(model, loader, num_class=1, debug=False):
-    mse_total = torch.zeros(len(loader))
-    regressor = model.eval()
+	mse_total = torch.zeros(len(loader))
+	regressor = model.eval()
 
-    if debug:
-        log_string(f'type(loader): {type(loader)}')
-        log_string(f'len(loader): {len(loader)}')
-        log_string(f'bs: {loader.batch_size}')
-        log_string(f'mse_total: {mse_total.shape}')
+	if debug:
+		log_string(f'type(loader): {type(loader)}')
+		log_string(f'len(loader): {len(loader)}')
+		log_string(f'bs: {loader.batch_size}')
+		log_string(f'mse_total: {mse_total.shape}')
 
-    sample_counter = 0
+	sample_counter = 0
 
-    for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
+	for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
 
-        if not args.use_cpu:
-            points, target = points.cuda(), target.cuda()
+		if not args.use_cpu:
+			points, target = points.cuda(), target.cuda()
 
-        points  = points.transpose(2, 1)
-        pred, _ = regressor(points)
-        target  = target.float()
+		points  = points.transpose(2, 1)
+		pred, _ = regressor(points)
+		if isinstance(target, torch.Tensor):
+			target  = target.float()
+		elif isinstance(target, list):
+			for idx,tgt in enumerate(target):
+				target[idx] = tgt.float()
 
-        if debug:
-            log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
-            log_string(f'[{j}] pred   : {pred} - target   : {target}')
-            log_string(f'[{j}] pred[0]: {pred[0]} - target[0]: {target[0]}')
-        pred = pred.squeeze(1)
-        if debug:
-            log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
+		if debug:
+			log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
+			log_string(f'[{j}] pred   : {pred} - target   : {target}')
+			log_string(f'[{j}] pred[0]: {pred[0]} - target[0]: {target[0]}')
+		if isinstance(pred, torch.Tensor):
+			pred = pred.squeeze(1)
+		elif (isinstance(pred, list) or isinstance(pred, tuple)) and (isinstance(target, list) or isinstance(target, tuple)):
+			pass
+		else:
+			log_string(f'Unhandled pred/target types: {type(pred)} - {type(target)}')
+		if debug:
+			log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
 
-        assert(pred.shape == target.shape)
+		mse_tensor = None
+		if isinstance(pred, torch.Tensor) and isinstance(target, torch.Tensor):
+			assert(pred.shape == target.shape)
+			mse_tensor = (pred - target) ** 2
+		elif (isinstance(pred, list) or isinstance(pred, tuple)) and (isinstance(target, list) or isinstance(target, tuple)):
+			mse_tensor_lst = []
+			for idx,pr in enumerate(pred):
+				log_string(f'[{j}] pred[{idx}]: {pr.shape} - target[{idx}]: {target[idx].shape}')
+				tgt = target[idx].reshape(pr.shape)
+				assert(pr.shape == tgt.shape)
+				mse_tensor_itm = (pr - tgt) ** 2
+				mse_tensor_lst.append(mse_tensor_itm.sum())
+			mse_tensor = torch.stack(mse_tensor_lst)
+		else:
+			log_string(f'Unhandled pred/target types: {type(pred)} - {type(target)}')
 
-        mse_tensor = (pred - target) ** 2
-        if debug:
-            log_string(f'[{j}] mse_tensor: {mse_tensor.shape}')
-            log_string(f'[{j}] mse_tensor: {mse_tensor}')
-            log_string(f'[{j}] mse_total : {mse_total.shape}')
-        mse_total[j] = mse_tensor.sum()
-        if debug:
-            log_string(f'[{j}] mse_total : {mse_total}')
+		if debug:
+			log_string(f'[{j}] mse_tensor: {mse_tensor.shape}')
+			log_string(f'[{j}] mse_tensor: {mse_tensor}')
+			log_string(f'[{j}] mse_total : {mse_total.shape}')
+		mse_total[j] = mse_tensor.sum()
+		if debug:
+			log_string(f'[{j}] mse_total : {mse_total}')
 
-        sample_counter += loader.batch_size
+		sample_counter += loader.batch_size
 
-    mse_mean = mse_total.mean()
-    mse_sum  = mse_total.sum()
-    mse = 1. * mse_total.sum() / sample_counter
-    if debug:
-        log_string(f'Returning mse_mean: {mse_mean} - mse_sum: {mse_sum} - mse: {mse}')
-    return mse_mean, mse_sum, mse
+	mse_mean = mse_total.mean()
+	mse_sum  = mse_total.sum()
+	mse = 1. * mse_total.sum() / sample_counter
+	if debug:
+		log_string(f'Returning mse_mean: {mse_mean} - mse_sum: {mse_sum} - mse: {mse}')
+	return mse_mean, mse_sum, mse
 
 
 def save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=0., class_acc=0., mse=0., mse_mean=0., mse_sum=0.):
@@ -358,6 +380,7 @@ def main(args):
                         tgt = torch.tensor(tgt)
 
                 pred, trans_feat = regressor(points)
+                '''
                 if args.y_range_min == -1. and args.y_range_max == -1.:
                     loss = criterion(pred, target, trans_feat)
                     pred_choice = pred.data.max(1)[1]
@@ -365,6 +388,8 @@ def main(args):
                     mean_correct.append(correct.item() / float(points.size()[0]))
                 else:
                     loss = criterion(pred, target.float(), trans_feat)
+                '''
+                loss = criterion(pred, target, trans_feat)
 
             loss.backward()
             optimizer.step()
@@ -378,7 +403,7 @@ def main(args):
 
 
         with torch.no_grad():
-            if y_range is not None:
+            if y_range is not None or args.symmetry_dataset or args.curveml_dataset:
                 mse_mean, mse_sum, mse = test_regression(regressor.eval(), valDataLoader, num_class=num_class)
 
                 if (mse < best_mse):
