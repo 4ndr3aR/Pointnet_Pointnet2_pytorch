@@ -303,7 +303,7 @@ class Symmetry(Dataset):
 				gt_df_cols = gt_df_cols.fillna(-1)
 
 				#print(f'5.5. __getitem__() gt_columns: {gt_columns} - gt_df_cols: {gt_df_cols}')
-				self.categorify_angles(gt_df_cols.loc[:, gt_df_cols.columns == 'rot'])
+				cat_angles = self.categorify_angles(gt_df_cols.loc[:, gt_df_cols.columns == 'rot'])
 
 				if debug:
 					print(f'6. __getitem__() gt_columns: {gt_columns} - gt_df_cols: {gt_df_cols}')
@@ -326,16 +326,19 @@ class Symmetry(Dataset):
 					#gt_mat_tmp = []
 					for idx,col in enumerate(gt_columns):
 						just_this_gt_col = list(gt_df[col].values)
-						if len(just_this_gt_col) < self.max_gt_rows:
+						if len(just_this_gt_col) < self.max_gt_rows:						# pad with -1
 							just_this_gt_col += [-1]*(self.max_gt_rows - len(just_this_gt_col))
-						if debug_verbose:
-							print(f'6.{idx}. __getitem__() gt_columns: {gt_columns} - gt_df[{col}].values: {just_this_gt_col}')
+						if debug_verbose or True:
+							print(f'7.{idx}. __getitem__() gt_columns: {gt_columns} - gt_df[{col}].values: {just_this_gt_col}')
 						if 'pop' in col:
 							gt_arr.append(gt_df[col].unique()[0])
 						elif 'rot' in col:
-							gt_cat.append(just_this_gt_col)
+							#gt_cat.append(just_this_gt_col)
+							cat_angles       += [-1]*(self.max_gt_rows - len(list(gt_df[col].values)))	# pad with -1
+							print(f'§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§ {cat_angles = }')
+							gt_cat.append(cat_angles)
 						elif 'type' in col:
-							gt_cat.append([0 if val == 'plane' else 1 for val in just_this_gt_col])
+							gt_cat.append([0 if val == 'plane' else 1 if val == 'axis' else -1 for val in just_this_gt_col])
 						else:
 							#gt_mat_tmp.append(list(just_this_gt_col))
 							gt_mat.append(just_this_gt_col)
@@ -345,14 +348,14 @@ class Symmetry(Dataset):
 						gt_cls = lbl
 
 					if debug_verbose:
-						print(f'7. __getitem__() gt_columns: {gt_columns}\ngt_arr: {gt_arr}\ngt_mat: {gt_mat}\ngt_cat: {gt_cat}\ngt_cls: {gt_cls}')
+						print(f'8. __getitem__() gt_columns: {gt_columns}\ngt_arr: {gt_arr}\ngt_mat: {gt_mat}\ngt_cat: {gt_cat}\ngt_cls: {gt_cls}')
 					gt = [torch.tensor(gt_arr), torch.tensor(gt_mat), torch.tensor(gt_cat), torch.tensor(gt_cls)]
 				if debug_verbose:
-					print(f'8. __getitem__() gt_columns: {gt_columns} - gt_df_cols.values[0]: {gt_df_cols.values[0]}')
+					print(f'9. __getitem__() gt_columns: {gt_columns} - gt_df_cols.values[0]: {gt_df_cols.values[0]}')
 		else:
 			gt = lbl #row['label']
 		if debug:
-			print(f'9. __getitem__() {gt_columns = } - returning GT with shape: {[list(itm.shape) for itm in gt]} - GT: \n{to_precision(gt)}')
+			print(f'10. __getitem__() {gt_columns = } - returning GT with shape: {[list(itm.shape) for itm in gt]} - GT: \n{to_precision(gt)}')
 		return points, gt
 
 	def __getitems__(self, idxs, debug=False):
@@ -546,14 +549,16 @@ if __name__ == '__main__':
 
 	if test_read:
 		print(f'Testing the read_symmetry_dataset() function...')
-		dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
+		#dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
+		dataset_path = Path('/mnt/data/datasets/symmetry-datasets/symmetries-dataset-astroid-geom_petal-1k')
 		test_data = read_symmetry_dataset(dataset_path)
 		print(f'read_symmetry_dataset() complete')
 		sys.exit()
 
 	if test_write:
 		print(f'Testing the read_and_save_dataset_partitions() function...')
-		dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
+		#dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
+		dataset_path = Path('/mnt/data/datasets/symmetry-datasets/symmetries-dataset-astroid-geom_petal-1k')
 		read_and_save_dataset_partitions(dataset_path)
 		print(f'read_and_save_dataset_partitions() complete')
 		sys.exit()
