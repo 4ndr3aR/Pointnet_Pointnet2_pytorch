@@ -264,7 +264,8 @@ def main(args):
         log_string(f'Received y_range: {y_range} with type: {type(y_range[0])} - {type(y_range[1])}')
     regressor = model.get_model(num_class, normal_channel=args.use_normals, y_range=y_range)
 
-    criterion = model.get_loss(y_range=y_range)
+    dataset = 'symmetry' if args.symmetry_dataset else 'curveml' if args.curveml_dataset else 'mnist'
+    criterion = model.get_loss(dataset=dataset, y_range=y_range)
     if args.y_range_min == -1. and args.y_range_max == -1.:
         regressor.apply(inplace_relu)
 
@@ -277,7 +278,8 @@ def main(args):
     log_string(f'one_batch: {len(one_batch)} - {one_batch[0].shape}')
     one_batch_data  = one_batch[0]
     one_batch_label = one_batch[1]
-    summary(regressor, input_data=torch.transpose(one_batch_data, 1, 2).cuda())
+    input_data = torch.transpose(one_batch_data, 1, 2)
+    summary(regressor, input_data=input_data.cuda() if not args.use_cpu else input_data)
     if args.show_one_batch:
         show_one_batch([one_batch_data, one_batch_label])
 
@@ -324,9 +326,10 @@ def main(args):
             optimizer.zero_grad()
 
             points = points.data.numpy()
-            points = provider.random_point_dropout(points)
-            points[:, :, 0:3] = provider.random_scale_point_cloud(points[:, :, 0:3])
-            points[:, :, 0:3] = provider.shift_point_cloud(points[:, :, 0:3])
+            if not args.symmetry_dataset and not args.curveml_dataset:
+                points = provider.random_point_dropout(points)
+                points[:, :, 0:3] = provider.random_scale_point_cloud(points[:, :, 0:3])
+                points[:, :, 0:3] = provider.shift_point_cloud(points[:, :, 0:3])
             points = torch.Tensor(points)
             points = points.transpose(2, 1)
 
@@ -345,14 +348,18 @@ def main(args):
             else:
                 if not args.use_cpu:
                     points = points.cuda()
-                    for idx,tgt in enumerate(target):
-                        print(f'cpu  target[{idx}]: {tgt}')
+                    for idx,tgt in enumerate(target):		# because now target is a list of lists/np.arrays
+                        print(f'cpu  target[{idx}]: {type(tgt)} -  {tgt}')
                         tgt = torch.tensor(tgt).cuda()
-                        print(f'cuda target[{idx}]: {tgt}')
+                        print(f'cuda target[{idx}]: {type(tgt)} -  {tgt}')
+                else:
+                    for idx,tgt in enumerate(target):		# because now target is a list of lists/np.arrays
+                        print(f'cpu  target[{idx}]: {type(tgt)} -  {tgt}')
+                        tgt = torch.tensor(tgt)
 
                 pred, trans_feat = regressor(points)
                 if args.y_range_min == -1. and args.y_range_max == -1.:
-                    loss = criterion(pred, target.long(), trans_feat)
+                    loss = criterion(pred, target, trans_feat)
                     pred_choice = pred.data.max(1)[1]
                     correct = pred_choice.eq(target.long().data).cpu().sum()
                     mean_correct.append(correct.item() / float(points.size()[0]))

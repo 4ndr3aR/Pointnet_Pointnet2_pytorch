@@ -5,26 +5,26 @@ import torch.nn.functional as F
 from pointnet_utils import PointNetEncoder, feature_transform_regularizer
 
 class SigmoidRange(nn.Module):
-    '''
-    Shape:
-        - Input: :math:`(*)`, where :math:`*` means any number of dimensions.
-        - Output: :math:`(*)`, same shape as the input.
+	'''
+	Shape:
+		- Input: :math:`(*)`, where :math:`*` means any number of dimensions.
+		- Output: :math:`(*)`, same shape as the input.
 
 
-    Examples::
+	Examples::
 
-        >>> m = nn.Sigmoid()
-        >>> input = torch.randn(2)
-        >>> output = m(input)
-    '''
+		>>> m = nn.Sigmoid()
+		>>> input = torch.randn(2)
+		>>> output = m(input)
+	'''
 
-    def __init__(self, low, high):
-        super(SigmoidRange, self).__init__()
-        self.low  = low
-        self.high = high
+	def __init__(self, low, high):
+		super(SigmoidRange, self).__init__()
+		self.low  = low
+		self.high = high
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        return torch.sigmoid(input) * (self.high - self.low) + self.low 
+	def forward(self, input: torch.Tensor) -> torch.Tensor:
+		return torch.sigmoid(input) * (self.high - self.low) + self.low 
 
 
 '''
@@ -117,8 +117,8 @@ class RegressionHead(nn.Module):
 
 		self.fc1 = nn.Linear(256, 128)
 		self.fc2 = nn.Linear(128, 64)
-		self.fc3 = nn.Linear(64, pop_floats)					# 3 float values for popx, popy, popz
-		self.fc4 = nn.Linear(64, normal_floats * normal_max_rows)		# 42 float values for nx, ny, nz (*14 rows)
+		self.fc3 = nn.Linear(64, self.pop_floats)					# 3 float values for popx, popy, popz
+		self.fc4 = nn.Linear(64, self.normal_floats * self.normal_max_rows)		# 42 float values for nx, ny, nz (*14 rows)
 
 		if self.debug:
 			print(f'RegressionHead.__init__() - pop_floats: {pop_floats} - normal_floats: {normal_floats} - normal_max_rows: {normal_max_rows}')
@@ -132,7 +132,7 @@ class RegressionHead(nn.Module):
 		pop  = self.fc3(x)
 		norm = self.fc4(x)
 
-		norm_flat = norm.view(-1, normal_floats * normal_max_rows)
+		norm_flat = norm.view(-1, self.normal_floats * self.normal_max_rows)
 
 		if self.debug:
 			print(f'RegressionHead.forward() - pop: {pop} - norm: {norm} - norm_flat: {norm_flat}')
@@ -164,55 +164,72 @@ class CombinedLoss(nn.Module):
 
 
 class get_model(nn.Module):
-    def __init__(self, out_features=40, normal_channel=True, y_range=None):
-        super(get_model, self).__init__()
-        if normal_channel:
-            channel = 6
-        else:
-            channel = 3
-        self.feat = PointNetEncoder(global_feat=True, feature_transform=True, channel=channel)
-        self.fc1 = nn.Linear(1024, 512)
-        self.fc2 = nn.Linear(512, 256)
-        #self.fc3 = nn.Linear(256, out_features)
-        self.dropout = nn.Dropout(p=0.4)
-        self.bn1 = nn.BatchNorm1d(512)
-        self.bn2 = nn.BatchNorm1d(256)
+	def __init__(self, out_features=40, normal_channel=True, y_range=None):
+		super(get_model, self).__init__()
+		if normal_channel:
+			channel = 6
+		else:
+			channel = 3
+		self.feat = PointNetEncoder(global_feat=True, feature_transform=True, channel=channel)
+		self.fc1 = nn.Linear(1024, 512)
+		self.fc2 = nn.Linear(512, 256)
+		#self.fc3 = nn.Linear(256, out_features)
+		self.dropout = nn.Dropout(p=0.4)
+		self.bn1 = nn.BatchNorm1d(512)
+		self.bn2 = nn.BatchNorm1d(256)
 
-	'''
-        self.y_range = y_range
+		self.regr = RegressionHead(pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False)
 
-        if self.y_range is not None:
-            self.sigmoid_range = SigmoidRange(self.y_range[0], self.y_range[1])
-        else:
-            self.relu = nn.ReLU()
-	'''
+		'''
+		self.y_range = y_range
 
-    def forward(self, x):
-        x, trans, trans_feat = self.feat(x)
-        x = F.relu(self.bn1(self.fc1(x)))
-        x = F.relu(self.bn2(self.dropout(self.fc2(x))))
-	'''
-        x = self.fc3(x)
-        if self.y_range is not None:
-            x = self.sigmoid_range(x)
-        else:
-            x = F.log_softmax(x, dim=1)
-	'''
-        return x, trans_feat
+		if self.y_range is not None:
+			self.sigmoid_range = SigmoidRange(self.y_range[0], self.y_range[1])
+		else:
+			self.relu = nn.ReLU()
+		'''
+
+	def forward(self, x):
+		x, trans, trans_feat = self.feat(x)
+		x = F.relu(self.bn1(self.fc1(x)))
+		x = F.relu(self.bn2(self.dropout(self.fc2(x))))
+
+		x = self.regr(x)
+		'''
+		x = self.fc3(x)
+		if self.y_range is not None:
+			x = self.sigmoid_range(x)
+		else:
+			x = F.log_softmax(x, dim=1)
+		'''
+		return x, trans_feat
 
 class get_loss(torch.nn.Module):
-    def __init__(self, y_range=None, mat_diff_loss_scale=0.001):
-        super(get_loss, self).__init__()
-        self.mat_diff_loss_scale = mat_diff_loss_scale
-        self.y_range = y_range
+	def __init__(self, y_range=None, mat_diff_loss_scale=0.001, dataset='symmetry'):
+		super(get_loss, self).__init__()
+		self.mat_diff_loss_scale = mat_diff_loss_scale
+		self.y_range = y_range
+		self.dataset = dataset
 
-    def forward(self, pred, target, trans_feat):
-        if self.y_range is not None:
-            pred = pred.squeeze(1)
-            loss = F.mse_loss(pred, target)
-        else:
-            loss = F.nll_loss(pred, target)
-        mat_diff_loss = feature_transform_regularizer(trans_feat)
+	def forward(self, pred, target, trans_feat):
+		if self.dataset == 'symmetry':
+			print(f'get_loss.forward() - type(pred): {type(pred)} - type(target): {type(target)}')
+			print(f'get_loss.forward() - len(pred): {len(pred)} - len(target): {len(target)}')
+			print(f'get_loss.forward() - pred: {pred} - target: {target}')
+			if isinstance(pred, torch.Tensor):
+				print(f'get_loss.forward() - pred.shape: {pred.shape}')
+			if isinstance(target, list):
+				for idx,tgt in enumerate(target):
+					if isinstance(tgt, torch.Tensor):
+						print(f'get_loss.forward() - tensor target[{idx}].shape: {tgt.shape}')
+					elif isinstance(tgt, l):
+						print(f'get_loss.forward() - list   target[{idx}].len  : {len(tgt)}')
+			print(f'get_loss.forward() - pred: {pred} - target: {target}')
+			pred = pred.squeeze(1)
+			loss = F.mse_loss(pred, target)
+		else:
+			loss = F.nll_loss(pred, target)
+		mat_diff_loss = feature_transform_regularizer(trans_feat)
 
-        total_loss = loss + mat_diff_loss * self.mat_diff_loss_scale
-        return total_loss
+		total_loss = loss + mat_diff_loss * self.mat_diff_loss_scale
+		return total_loss
