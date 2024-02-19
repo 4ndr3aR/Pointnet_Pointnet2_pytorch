@@ -183,7 +183,7 @@ class Symmetry(Dataset):
 	'''
 
 	NUM_CLASSIFICATION_CLASSES = 2
-	MAX_POINTS = 1000
+	MAX_POINTS = 10000
 	MAX_GT_ROWS = 14			# Max number of symmetries per figure. Figures with GT less than this number of symmetries will be -1-padded
 	MIN_GRANULARITY = 0.000001		# Minimum range for floats in GT. If a float is smaller than this, it will be zeroed
 
