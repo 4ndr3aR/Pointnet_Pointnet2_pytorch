@@ -137,15 +137,21 @@ def test_regression(model, loader, num_class=1, debug=False):
 	for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
 
 		if not args.use_cpu:
-			points, target = points.cuda(), target.cuda()
+			#points, target = points.cuda(), target.cuda()
+			points = points.cuda()
 
 		points  = points.transpose(2, 1)
 		pred, _ = regressor(points)
 		if isinstance(target, torch.Tensor):
 			target  = target.float()
+			if not args.use_cpu:
+				target = target.cuda()
 		elif isinstance(target, list):
+			regressor.list_target_to_cuda_float_tensor(target, cuda=(not args.use_cpu))		# because now target is a list of lists/np.arrays
+			'''
 			for idx,tgt in enumerate(target):
 				target[idx] = tgt.float()
+			'''
 
 		if debug:
 			log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
@@ -368,16 +374,19 @@ def main(args):
                 else:
                     loss = criterion(pred, target.float(), trans_feat)
             else:
+                regressor.list_target_to_cuda_float_tensor(target, cuda=(not args.use_cpu))		# because now target is a list of lists/np.arrays
                 if not args.use_cpu:
                     points = points.cuda()
+                '''
                     for idx,tgt in enumerate(target):		# because now target is a list of lists/np.arrays
                         print(f'cpu  target[{idx}]: {type(tgt)} -  {tgt}')
-                        tgt = torch.tensor(tgt).cuda()
+                        target[idx] = torch.tensor(tgt).cuda()
                         print(f'cuda target[{idx}]: {type(tgt)} -  {tgt}')
                 else:
                     for idx,tgt in enumerate(target):		# because now target is a list of lists/np.arrays
                         print(f'cpu  target[{idx}]: {type(tgt)} -  {tgt}')
-                        tgt = torch.tensor(tgt)
+                        target[idx] = torch.tensor(tgt)
+                '''
 
                 pred, trans_feat = regressor(points)
                 '''
@@ -389,6 +398,8 @@ def main(args):
                 else:
                     loss = criterion(pred, target.float(), trans_feat)
                 '''
+                #print(f'pred  : {pred} - {type(pred)}')
+                #print(f'target: {target} - {type(target)}')
                 loss = criterion(pred, target, trans_feat)
 
             loss.backward()

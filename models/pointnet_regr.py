@@ -204,6 +204,16 @@ class get_model(nn.Module):
 		'''
 		return x, trans_feat
 
+	def list_target_to_cuda_float_tensor(self, target, cuda=True, debug=False):
+		for idx,tgt in enumerate(target):		# because now target is a list of lists/np.arrays
+			if debug:
+				print(f'cpu  target[{idx}]: {type(tgt)} -  {tgt}')
+			target[idx] = torch.tensor(tgt)
+			if cuda:
+				target[idx] = target[idx].cuda()
+			if debug:
+				print(f'cuda target[{idx}]: {type(target[idx])} -  {target[idx]}')
+
 class get_loss(torch.nn.Module):
 	def __init__(self, y_range=None, mat_diff_loss_scale=0.001, dataset='symmetry'):
 		super(get_loss, self).__init__()
@@ -213,9 +223,12 @@ class get_loss(torch.nn.Module):
 
 	def forward(self, pred, target, trans_feat):
 		if self.dataset == 'symmetry':
+			torch.set_printoptions(profile="full")
+			torch.set_printoptions(linewidth=210)
 			print(f'get_loss.forward() - type(pred): {type(pred)} - type(target): {type(target)}')
 			print(f'get_loss.forward() - len(pred): {len(pred)} - len(target): {len(target)}')
 			print(f'get_loss.forward() - pred: {pred} - target: {target}')
+			torch.set_printoptions(profile="default")
 			if isinstance(pred, torch.Tensor):
 				print(f'get_loss.forward() - pred.shape: {pred.shape}')
 			if isinstance(target, list):
