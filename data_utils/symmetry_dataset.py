@@ -22,6 +22,8 @@ import matplotlib.pyplot as plt
 
 from collections import Counter			# just to subtract lists of strings
 
+from joblib import Parallel, delayed
+
 import pandas as pd
 pd.options.display.precision = 3
 
@@ -183,7 +185,7 @@ class Symmetry(Dataset):
 	'''
 
 	NUM_CLASSIFICATION_CLASSES = 2
-	MAX_POINTS = 10000
+	MAX_POINTS = 1000
 	MAX_GT_ROWS = 14			# Max number of symmetries per figure. Figures with GT less than this number of symmetries will be -1-padded
 	MIN_GRANULARITY = 0.000001		# Minimum range for floats in GT. If a float is smaller than this, it will be zeroed
 
@@ -438,6 +440,16 @@ def read_gt_file(gt_file, debug=False):
     df.columns = ['type', 'popx', 'popy', 'popz', 'nx', 'ny', 'nz', 'rot'] # normals and points on plane (for planar symmetry) and rot for axial symmetry
     return df
 
+'''
+def joblib_test():
+	def process(i):
+		print(f'Running thread {i}')
+		return i * i
+    
+	results = Parallel(n_jobs=2)(delayed(process)(i) for i in range(10))
+	print(results)  # prints [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+'''
+
 def read_symmetry_dataset(path, debug=False):
 	#dataset = pd.DataFrame(columns=['angle, trans_x, trans_y, a, b, n_petals', 'label', 'fpath', 'points'])
 	#dataset = pd.DataFrame()
@@ -486,6 +498,81 @@ def read_symmetry_dataset(path, debug=False):
 
 	return dataset
 
+def parallel_read_symmetry_dataset(path, debug=False):
+	def process(idx, file, debug=False):
+		if debug:
+			print(f'read_symmetry_dataset() - reading file: {file} - {idx}')
+			print(f'read_symmetry_dataset() - in path     : {file.parents[0]}')
+			print(f'file.is_file(): {file.is_file()}')
+		if file.is_file():
+			#points = genfromtxt(file, delimiter=',')
+			points = load_npz(file)
+			label  = file.parent.stem			# geom_petal
+			split  = file.parent.parent.stem		# test
+			gtfn   = file.parents[0] / (file.name[:-4] + '-sym.txt')
+			#tmpdf  = pd.DataFrame(columns=['label', 'fpath', 'points', 'gt'])
+			tmpdf  = dict()
+			tmpdf['label']  = label
+			tmpdf['split']  = split 
+			tmpdf['points'] = [points]
+			tmpdf['gt']     = read_gt_file(gtfn)
+
+			if idx % 1000 == 0 and idx != 0:
+				print(f'read_symmetry_dataset() - {idx} files processed so far ({split} - {label} - {points.shape})')
+			return tmpdf
+
+	debug=False
+	if debug:
+		print(f'read_symmetry_dataset() - Received path: {path}')
+	csv_files = Path(path).rglob('*.npz')
+	ds_lst    = list(csv_files)
+	ds_len    = len(ds_lst)
+	dataset   = [None]*ds_len
+	if debug:
+		print(f'read_symmetry_dataset() - {ds_len} files found')
+
+	dataset = Parallel(n_jobs=16)(delayed(process)(idx,file,debug=debug) for idx, file in enumerate(ds_lst))
+	print(f'read_symmetry_dataset() - {len(results)} files processed - {type(results)}')
+
+	'''
+	#csv_files = Path(path).rglob('*.npz')				
+	for idx, file in enumerate(list(csv_files)):
+		if debug:
+			print(f'read_symmetry_dataset() - reading file: {file}')
+			print(f'read_symmetry_dataset() - in path     : {file.parents[0]}')
+		if file.is_file():
+			#points = genfromtxt(file, delimiter=',')
+			points = load_npz(file)
+			label  = file.parent.stem			# geom_petal
+			split  = file.parent.parent.stem		# test
+			gtfn   = file.parents[0] / (file.name[:-4] + '-sym.txt')
+			#tmpdf  = pd.DataFrame(columns=['label', 'fpath', 'points', 'gt'])
+			tmpdf  = dict()
+			tmpdf['label']  = label
+			tmpdf['split']  = split 
+			tmpdf['points'] = [points]
+			tmpdf['gt']     = read_gt_file(gtfn)
+
+			if counter % 1000 == 0:
+				print(f'read_symmetry_dataset() - {counter+1} files processed so far ({split} - {label} - {points.shape})')
+				#print(f'read_symmetry_dataset() - {idx} - {file} - {parmfn} - {tmpdf.shape} - {tmpdf}')
+				print(f'read_symmetry_dataset() - {idx} - {len(dataset)} - {dataset}')
+
+			dataset.append(tmpdf)
+
+			counter += 1
+
+	print(f'read_symmetry_dataset() - {counter} files read')
+	'''
+
+	none_counter = sum(x is None for x in dataset)
+	print(f'parallel_read_symmetry_dataset() - {ds_len} files read - dataset has {none_counter} None elements')
+	if debug or True:
+		for i in range(3):
+			print(f'read_symmetry_dataset() - {i} - {dataset[i]}')
+
+	return dataset
+
 def save_dataset(dataset, path, fname, also_pickle=False):
 	if also_pickle:
 		print(f'Writing uncompressed dataset...')
@@ -495,7 +582,7 @@ def save_dataset(dataset, path, fname, also_pickle=False):
 	with lzma.open(Path(path) / Path(str(fname) + '.xz'), 'wb') as fhandle:
 		pickle.dump(dataset, fhandle)
 
-def read_and_save_dataset_partitions(dataset_path):
+def read_and_save_dataset_partitions(dataset_path, output_path='./'):
 	test_dataset     = read_symmetry_dataset(dataset_path / 'test')
 	save_dataset(test_dataset, './', 'test'  , also_pickle=False)
 	valid_dataset    = read_symmetry_dataset(dataset_path / 'valid')
@@ -542,24 +629,41 @@ def create_symmetry_dataloaders(symmetry_path, bs, gt_columns=None, only_test_se
 if __name__ == '__main__':
 
 	test_read      = False
-	test_write     = True
+	test_dist_read = True
+	test_write     = False
 	test_load      = False
 	test_show      = False
 	test_one_batch = False
 
+	'''
+	joblib_test()
+	sys.exit()
+	'''
+
 	if test_read:
 		print(f'Testing the read_symmetry_dataset() function...')
 		#dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
-		dataset_path = Path('/mnt/data/datasets/symmetry-datasets/symmetries-dataset-astroid-geom_petal-1k')
+		#dataset_path = Path('/mnt/data/datasets/symmetry-datasets/symmetries-dataset-astroid-geom_petal-1k')
+		dataset_path = Path('/tmp/symmetries-dataset-split')
 		test_data = read_symmetry_dataset(dataset_path)
+		print(f'read_symmetry_dataset() complete')
+		sys.exit()
+	if test_dist_read:
+		print(f'Testing the parallel_read_symmetry_dataset() function...')
+		#dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
+		#dataset_path = Path('/mnt/data/datasets/symmetry-datasets/symmetries-dataset-astroid-geom_petal-1k')
+		dataset_path = Path('/tmp/symmetries-dataset-split/test')
+		test_data = parallel_read_symmetry_dataset(dataset_path)
 		print(f'read_symmetry_dataset() complete')
 		sys.exit()
 
 	if test_write:
 		print(f'Testing the read_and_save_dataset_partitions() function...')
 		#dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
-		dataset_path = Path('/mnt/data/datasets/symmetry-datasets/symmetries-dataset-astroid-geom_petal-1k')
-		read_and_save_dataset_partitions(dataset_path)
+		#dataset_path = Path('/mnt/data/datasets/symmetry-datasets/symmetries-dataset-astroid-geom_petal-1k')
+		dataset_path = Path('/tmp/symmetries-dataset-split')								# 100k this time
+		output_path  = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/xz')		# need more space
+		read_and_save_dataset_partitions(dataset_path, output_path=output_path)
 		print(f'read_and_save_dataset_partitions() complete')
 		sys.exit()
 
