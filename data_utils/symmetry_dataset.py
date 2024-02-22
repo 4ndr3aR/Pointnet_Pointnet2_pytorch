@@ -11,7 +11,10 @@ import torchvision
 
 #import cv2
 
-import lzma
+import multiprocessing				# for multiprocessing.cpu_count()
+
+import pgzip					# parallel gzip, waiting for python-lzma to support parallelization: https://github.com/python/cpython/pull/114954
+import lzma					# for xz compression
 import pickle
 
 from pathlib import Path
@@ -450,7 +453,13 @@ def joblib_test():
 	print(results)  # prints [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
 '''
 
-def read_symmetry_dataset(path, debug=False):
+def read_symmetry_dataset(path, parallel=False, debug=False):
+	if parallel:
+		return parallel_read_symmetry_dataset(path, debug=debug)
+	else:
+		return sequential_read_symmetry_dataset(path, debug=debug)
+
+def sequential_read_symmetry_dataset(path, debug=False):
 	#dataset = pd.DataFrame(columns=['angle, trans_x, trans_y, a, b, n_petals', 'label', 'fpath', 'points'])
 	#dataset = pd.DataFrame()
 	dataset = []
@@ -478,7 +487,7 @@ def read_symmetry_dataset(path, debug=False):
 			tmpdf  = dict()
 			tmpdf['label']  = label
 			tmpdf['split']  = split 
-			tmpdf['points'] = [points]
+			tmpdf['points'] = points
 			tmpdf['gt']     = read_gt_file(gtfn)
 
 			if counter % 1000 == 0:
@@ -511,17 +520,20 @@ def parallel_read_symmetry_dataset(path, debug=False):
 			split  = file.parent.parent.stem		# test
 			gtfn   = file.parents[0] / (file.name[:-4] + '-sym.txt')
 			#tmpdf  = pd.DataFrame(columns=['label', 'fpath', 'points', 'gt'])
+
+			print(f'{type(points) = } - {points.shape = }')
+			print(f'{points = }')
+
 			tmpdf  = dict()
 			tmpdf['label']  = label
 			tmpdf['split']  = split 
-			tmpdf['points'] = [points]
+			tmpdf['points'] = points
 			tmpdf['gt']     = read_gt_file(gtfn)
 
 			if idx % 1000 == 0 and idx != 0:
 				print(f'read_symmetry_dataset() - {idx} files processed so far ({split} - {label} - {points.shape})')
 			return tmpdf
 
-	debug=False
 	if debug:
 		print(f'read_symmetry_dataset() - Received path: {path}')
 	csv_files = Path(path).rglob('*.npz')
@@ -532,7 +544,7 @@ def parallel_read_symmetry_dataset(path, debug=False):
 		print(f'read_symmetry_dataset() - {ds_len} files found')
 
 	dataset = Parallel(n_jobs=16)(delayed(process)(idx,file,debug=debug) for idx, file in enumerate(ds_lst))
-	print(f'read_symmetry_dataset() - {len(results)} files processed - {type(results)}')
+	print(f'read_symmetry_dataset() - {len(dataset)} files processed - {type(dataset)}')
 
 	'''
 	#csv_files = Path(path).rglob('*.npz')				
@@ -567,29 +579,87 @@ def parallel_read_symmetry_dataset(path, debug=False):
 
 	none_counter = sum(x is None for x in dataset)
 	print(f'parallel_read_symmetry_dataset() - {ds_len} files read - dataset has {none_counter} None elements')
-	if debug or True:
-		for i in range(3):
-			print(f'read_symmetry_dataset() - {i} - {dataset[i]}')
+	if debug:
+		idx = 0
+		print(f'read_symmetry_dataset() - {idx} - {dataset[idx]}')
+		idx = len(dataset)//2
+		print(f'read_symmetry_dataset() - {idx} - {dataset[idx]}')
+		idx = len(dataset)-1
+		print(f'read_symmetry_dataset() - {idx} - {dataset[idx]}')
 
 	return dataset
 
-def save_dataset(dataset, path, fname, also_pickle=False):
+def save_dataset(dataset, path, fname, parallel=False, also_pickle=False):
 	if also_pickle:
 		print(f'Writing uncompressed dataset...')
 		with open(Path(path) / Path(str(fname) + '.pickle'), 'wb') as fhandle:
 			pickle.dump(dataset, fhandle)
-	print(f'Writing compressed dataset...')
-	with lzma.open(Path(path) / Path(str(fname) + '.xz'), 'wb') as fhandle:
-		pickle.dump(dataset, fhandle)
+	if not parallel:
+		dst_fn = Path(path) / Path(str(fname) + '.xz')
+		print(f'Writing compressed dataset to: {dst_fn}...')
+		with lzma.open(dst_fn, 'wb') as fhandle:
+			pickle.dump(dataset, fhandle)
+	else:
+		'''
+		dst_fn = Path(path) / Path(str(fname) + '.xz')
+		print(f'Writing compressed dataset to: {dst_fn}...')
+		print(f'{type(dataset)} - {len(dataset)} - {dataset[:2]}')
+		ds = pd.DataFrame(dataset)
+		print(f'{type(ds)} - {len(ds)} - {ds[:2]}')
+		dataset2 = dict(ds)
+		print(f'{type(dataset2)} - {len(dataset2)}')
+		print(f'{type(dataset2)} - {len(dataset2)} - {dataset2}')
+		ds.head(100).to_csv(dst_fn, compression='xz')
+		#with lzma.open(dst_fn, 'wb') as fhandle:
+		#	pickle.dump(dataset, fhandle)
+		return
+		'''
 
-def read_and_save_dataset_partitions(dataset_path, output_path='./'):
-	test_dataset     = read_symmetry_dataset(dataset_path / 'test')
-	save_dataset(test_dataset, './', 'test'  , also_pickle=False)
-	valid_dataset    = read_symmetry_dataset(dataset_path / 'valid')
-	save_dataset(valid_dataset, './', 'valid', also_pickle=False)
-	train_dataset    = read_symmetry_dataset(dataset_path / 'train')
-	save_dataset(train_dataset, './', 'train', also_pickle=False)
-	return train_dataset, valid_dataset, test_dataset
+
+
+
+		dst_fn = Path(path) / Path(str(fname) + '.gz')
+		print(f'Parallel-writing compressed dataset to: {dst_fn}...')
+		n_threads = multiprocessing.cpu_count() * 2
+		block_sz  = 1024*1024*1024
+		'''
+		#s = "a big string..."
+		s = data[: (20 * (2 << 20))] #.decode(encoding='latin-1')
+		print(f'len(s) = {len(s)}')
+		print(f'type(s) = {type(s)}')
+		print(f's[:100] = {s[:100]}')
+		'''
+		
+		## Use current CPU thread count * 2 threads to compress.
+		## None or 0 means using all CPUs (default)
+		## Compression block size is set to 200MB
+		with pgzip.open(dst_fn, "wb", thread=n_threads, blocksize=block_sz) as fhandle:
+			pickle.dump(dataset, fhandle)
+		        #fw.write(s)
+
+		'''
+		with pgzip.open("test.txt.gz", "rb", thread=n_threads) as fr: 
+		        s2 = fr.read(len(s))
+		        print(f'{len(s)} == {len(s2)}')
+		        print(f's [100:200] = {s[100:200]}')
+		        print(f's2[100:200] = {s2[100:200]}')
+		        print(f's [:100] = {s[:100]}')
+		        print(f's2[:100] = {s2[:100]}')
+		        assert s2 == s
+		'''
+
+
+def read_and_save_dataset_partitions(dataset_path, output_path='./', parallel=False):
+	test_dataset     = read_symmetry_dataset(dataset_path / 'test',  parallel=parallel)
+	save_dataset(test_dataset, './', 'test'  , also_pickle=False,    parallel=parallel)
+	del test_dataset
+	valid_dataset    = read_symmetry_dataset(dataset_path / 'valid', parallel=parallel)
+	save_dataset(valid_dataset, './', 'valid', also_pickle=False,    parallel=parallel)
+	del valid_dataset
+	train_dataset    = read_symmetry_dataset(dataset_path / 'train', parallel=parallel)
+	save_dataset(train_dataset, './', 'train', also_pickle=False,    parallel=parallel)
+	del train_dataset
+	return #train_dataset, valid_dataset, test_dataset
 
 def create_symmetry_dataloaders(symmetry_path, bs, gt_columns=None, only_test_set=False, valid_and_test_sets=False):
 	train_dataset,    val_dataset,    test_dataset    = None, None, None
@@ -629,8 +699,9 @@ def create_symmetry_dataloaders(symmetry_path, bs, gt_columns=None, only_test_se
 if __name__ == '__main__':
 
 	test_read      = False
-	test_dist_read = True
+	test_dist_read = False
 	test_write     = False
+	test_dist_write= True
 	test_load      = False
 	test_show      = False
 	test_one_batch = False
@@ -640,30 +711,22 @@ if __name__ == '__main__':
 	sys.exit()
 	'''
 
-	if test_read:
+	if test_read or test_dist_read:
 		print(f'Testing the read_symmetry_dataset() function...')
 		#dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
 		#dataset_path = Path('/mnt/data/datasets/symmetry-datasets/symmetries-dataset-astroid-geom_petal-1k')
 		dataset_path = Path('/tmp/symmetries-dataset-split')
-		test_data = read_symmetry_dataset(dataset_path)
-		print(f'read_symmetry_dataset() complete')
-		sys.exit()
-	if test_dist_read:
-		print(f'Testing the parallel_read_symmetry_dataset() function...')
-		#dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
-		#dataset_path = Path('/mnt/data/datasets/symmetry-datasets/symmetries-dataset-astroid-geom_petal-1k')
-		dataset_path = Path('/tmp/symmetries-dataset-split/test')
-		test_data = parallel_read_symmetry_dataset(dataset_path)
+		test_data = read_symmetry_dataset(dataset_path, parallel=test_dist_read)
 		print(f'read_symmetry_dataset() complete')
 		sys.exit()
 
-	if test_write:
+	if test_write or test_dist_write:
 		print(f'Testing the read_and_save_dataset_partitions() function...')
 		#dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
 		#dataset_path = Path('/mnt/data/datasets/symmetry-datasets/symmetries-dataset-astroid-geom_petal-1k')
 		dataset_path = Path('/tmp/symmetries-dataset-split')								# 100k this time
 		output_path  = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/xz')		# need more space
-		read_and_save_dataset_partitions(dataset_path, output_path=output_path)
+		read_and_save_dataset_partitions(dataset_path, output_path=output_path, parallel=test_dist_write)
 		print(f'read_and_save_dataset_partitions() complete')
 		sys.exit()
 
