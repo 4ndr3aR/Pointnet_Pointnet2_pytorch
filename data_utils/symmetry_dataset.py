@@ -735,10 +735,10 @@ if __name__ == '__main__':
 
 	if test_write or test_dist_write:
 		print(f'Testing the read_and_save_dataset_partitions() function...')
-		#dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
+		dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
 		#dataset_path = Path('/mnt/data/datasets/symmetry-datasets/symmetries-dataset-astroid-geom_petal-1k')
-		dataset_path = Path('/tmp/symmetries-dataset-split')								# 100k this time
-		output_path  = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/xz')		# need more space
+		#dataset_path = Path('/tmp/symmetries-dataset-split')								# 100k this time
+		output_path  = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz')		# need more space
 		read_and_save_dataset_partitions(dataset_path, output_path=output_path, parallel=test_dist_write)
 		print(f'read_and_save_dataset_partitions() complete')
 		sys.exit()

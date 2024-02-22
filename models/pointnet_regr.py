@@ -139,6 +139,76 @@ class RegressionHead(nn.Module):
 
 		return pop, norm_flat
 
+class RegressionModel(nn.Module):
+	def __init__(self, num_features_in, feature_size=256, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False):
+		super(RegressionModel, self).__init__()
+
+		self.debug = debug
+		self.pop_floats = pop_floats
+		self.normal_floats = normal_floats
+		self.normal_max_rows = normal_max_rows
+
+		'''
+ 92         self.conv1 = torch.nn.Conv1d(channel, 64, 1)
+ 93         self.conv2 = torch.nn.Conv1d(64, 128, 1)
+ 94         self.conv3 = torch.nn.Conv1d(128, 1024, 1)
+ 95         self.bn1 = nn.BatchNorm1d(64)
+ 96         self.bn2 = nn.BatchNorm1d(128)
+		'''
+
+		#self.conv1 = nn.Conv2d(num_features_in, feature_size, kernel_size=3, padding=1)
+		self.conv1 = nn.Conv1d(num_features_in, feature_size, 1)
+		self.act1 = nn.ReLU()
+
+		#self.conv2 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+		self.conv2 = nn.Conv1d(feature_size, feature_size, 1)
+		self.act2 = nn.ReLU()
+
+		#self.conv3 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+		self.conv3 = nn.Conv1d(feature_size, feature_size, 1)
+		self.act3 = nn.ReLU()
+
+		#self.conv4 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+		self.conv4 = nn.Conv1d(feature_size, feature_size, 1)
+		self.act4 = nn.ReLU()
+
+		#self.output1 = nn.Conv2d(feature_size, self.pop_floats, kernel_size=3, padding=1)
+		self.output1 = nn.Conv1d(feature_size, self.pop_floats, 1)
+		#self.output2 = nn.Conv2d(feature_size, self.normal_floats * self.normal_max_rows, kernel_size=3, padding=1)
+
+		if self.debug:
+			print(f'RegressionModel.__init__() - pop_floats: {pop_floats} - normal_floats: {normal_floats} - normal_max_rows: {normal_max_rows}')
+
+	def forward(self, x):
+		out = self.conv1(x)
+		out = self.act1(out)
+
+		out = self.conv2(out)
+		out = self.act2(out)
+
+		out = self.conv3(out)
+		out = self.act3(out)
+
+		out = self.conv4(out)
+		out = self.act4(out)
+
+		#out = self.output(out)
+		out = self.output1(out)
+
+		if self.debug:
+			print(f'RegressionModel.forward() - out.shape: {out.shape} - out: {out}')
+		# out is B x C x W x H, with C = 4*num_anchors
+		out = out.permute(0, 2, 3, 1)
+		if self.debug:
+			print(f'RegressionModel.forward() - out.shape: {out.shape} - out: {out}')
+
+		out = out.contiguous().view(out.shape[0], -1, 3)
+		if self.debug:
+			print(f'RegressionModel.forward() - out.shape: {out.shape} - out: {out}')
+
+		return out
+
+
 class CombinedLoss(nn.Module):
 	def __init__(self, debug=False):
 		super().__init__()
@@ -159,6 +229,20 @@ class CombinedLoss(nn.Module):
 
 		return loss
 
+'''''
+# YOLOv8
+class ExtendedSegment(Segment):
+    """Extends the Segment class to add a regression head predicting a 6D vector."""
+
+    def __init__(self, nc=80, nm=32, npr=256, ch=()):
+        super().__init__(nc, nm, npr, ch)
+        self.regression_head = nn.ModuleList(nn.Sequential(
+            Conv(x, max(x // 4, 128), 3),
+            Conv(max(x // 4, 128), max(x // 4, 128), 3),
+            nn.Conv2d(max(x // 4, 128), 6, 1),
+            nn.Sigmoid()) for x in ch)  # Produces a 6D vector for each anchor and applies sigmoid activation
+'''''
+
 
 
 
@@ -178,7 +262,8 @@ class get_model(nn.Module):
 		self.bn1 = nn.BatchNorm1d(512)
 		self.bn2 = nn.BatchNorm1d(256)
 
-		self.regr = RegressionHead(pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False)
+		#self.regr = RegressionHead(pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False)
+		self.regr = RegressionModel(num_features_in=256, feature_size=128, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=True)
 
 		'''
 		self.y_range = y_range
@@ -215,13 +300,14 @@ class get_model(nn.Module):
 				print(f'cuda target[{idx}]: {type(target[idx])} -  {target[idx]}')
 
 class get_loss(torch.nn.Module):
-	def __init__(self, y_range=None, mat_diff_loss_scale=0.001, dataset='symmetry'):
+	def __init__(self, y_range=None, mat_diff_loss_scale=10000, dataset='symmetry'):
 		super(get_loss, self).__init__()
 		self.mat_diff_loss_scale = mat_diff_loss_scale
 		self.y_range = y_range
 		self.dataset = dataset
 
 	def forward(self, pred, target, trans_feat):
+		loss_lst = []
 		if self.dataset == 'symmetry':
 			torch.set_printoptions(profile="full")
 			torch.set_printoptions(linewidth=210)
@@ -241,8 +327,6 @@ class get_loss(torch.nn.Module):
 			#pred = pred.squeeze(1)
 			#loss = F.mse_loss(pred, target)
 
-			loss_lst = []
-
 			for idx,pr in enumerate(pred):
 				tgt = target[idx].reshape(pr.shape)
 				loss_itm = F.mse_loss(pr, tgt.float())
@@ -250,12 +334,13 @@ class get_loss(torch.nn.Module):
 				loss_lst.append(loss_itm)
 
 			loss = sum(loss_lst)
-			print(f'get_loss.forward() - loss_lst: {loss_lst} - final loss: {loss}')
 		else:
 			loss = F.nll_loss(pred, target)
 		mat_diff_loss = feature_transform_regularizer(trans_feat)
+		print(f'get_loss.forward() - loss_lst: {loss_lst} - mat_diff_loss: {mat_diff_loss} - final loss: {loss}')
 
 		total_loss = loss + mat_diff_loss * self.mat_diff_loss_scale
-		#total_loss = total_loss.float()
+		#total_loss = loss_lst[0]
+
 		print(f'get_loss.forward() - total_loss: {total_loss} - type(total_loss): {type(total_loss)} - dtype(total_loss): {total_loss.dtype}')
 		return total_loss.float()

@@ -264,7 +264,8 @@ def main(args):
     elif args.symmetry_dataset:
         log_string('Loading the Symmetry dataset...')
         #symmetry_path = Path('./data/Symmetry')
-        symmetry_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz/symmetries-dataset-astroid-geom_petal-100k')
+        #symmetry_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz/symmetries-dataset-astroid-geom_petal-100k')
+        symmetry_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz/symmetries-dataset-astroid-geom_petal-10k')
         gt_columns = args.gt_columns if args.gt_columns is not None else 'label'
         log_string(f'Using column {gt_columns} as ground truth')
         trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_columns=gt_columns, bs=args.batch_size, only_test_set=args.only_test_set, extension='.gz')
