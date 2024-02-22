@@ -160,10 +160,22 @@ def load_dataset(path, fname, debug=False):
 	if Path(Path(path) / fname).is_file() and Path(fname).suffix == '.xz':
 		if debug:
 			print(f'Reading LZMA compressed dataset...')
-		with lzma.open(Path(path) / Path(str(fname)), 'rb') as fhandle:
+		src_fn = Path(path) / Path(str(fname))
+		with lzma.open(src_fn, 'rb') as fhandle:
 			data = pickle.load(fhandle)
 			#if debug:
 			#	print(f'Read {len(data)} samples - {type(data[0]) = } - {len(data[0]) = } - {data[0][0].shape = } - {data[0][1] = } - {data[0][2] = }')
+	elif Path(Path(path) / fname).is_file() and Path(fname).suffix == '.gz':
+		src_fn    = Path(path) / Path(str(fname))
+		if debug or True:
+			print(f'Parallel-reading PGZIP compressed dataset...')
+		n_threads = multiprocessing.cpu_count() * 2
+		block_sz  = 1024*1024*1024
+		## Use current CPU thread count * 2 threads to compress.
+		## None or 0 means using all CPUs (default)
+		## Compression block size is set to 1 GB
+		with pgzip.open(src_fn, 'rb', thread=n_threads, blocksize=block_sz) as fhandle:
+			data = pickle.load(fhandle)
 	else:
 		if debug:
 			print(f'Reading uncompressed dataset...')
@@ -195,14 +207,14 @@ class Symmetry(Dataset):
 	#LABELS = ['cassinian-oval', 'cissoid', 'citrus', 'egg', 'geom-petal', 'hypocycloid', 'mouth', 'spiral']
 	LABELS = ['astroid', 'geometric_petal']
 
-	def __init__(self, path, partition, gt_columns=None,
+	def __init__(self, path, partition, extension='.xz', gt_columns=None,
 			max_points=MAX_POINTS, labels=LABELS, max_gt_rows=MAX_GT_ROWS, min_granularity=MIN_GRANULARITY,
 			add_noise=False):
 		self.path            = path
 		self.labels          = labels
 		#self.vocab          = [[], labels]	# because of: ```if is_listy(self.vocab): self.vocab     = self.vocab[-1]```
 		self.add_noise       = add_noise
-		self.dataset         = load_dataset(path, partition + '.xz')
+		self.dataset         = load_dataset(path, partition + extension)
 		self.gt_columns      = gt_columns	# e.g. 'type', 'popx', 'popy', 'popz', 'nx', 'ny', 'nz', 'rot' (only for the first row in the gt dataframe)
 		self.max_points      = max_points
 		self.max_gt_rows     = max_gt_rows
@@ -248,7 +260,7 @@ class Symmetry(Dataset):
 		lbl = torch.tensor(self.labels.index(label))
 		#angle,trans_x,trans_y,a,b,n_petals = row['angle'],row['trans_x'],row['trans_y'],row['a'],row['b'],row['n_petals']
 		#angle,trans_x,trans_y,a,b,n_petals = row['angle'],row['trans_x'],row['trans_y'],row['a'],row['b'],row['n_petals']
-		label, split, points, gt = row['label'], row['split'], row['points'][0], row['gt']
+		label, split, points, gt = row['label'], row['split'], row['points'], row['gt']
 
 		'''
 		if debug:
@@ -268,6 +280,7 @@ class Symmetry(Dataset):
 			sampling_indices = np.random.choice(points.shape[0], self.max_points - points.shape[0])
 			if debug_verbose:
 				print(f'3. __getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
+			print(f'{points.shape = } - {type(points) = } - {points = }')
 			new_points = points[sampling_indices, : ]
 			points = np.concatenate((points, new_points), axis=0)
 		else:
@@ -521,8 +534,8 @@ def parallel_read_symmetry_dataset(path, debug=False):
 			gtfn   = file.parents[0] / (file.name[:-4] + '-sym.txt')
 			#tmpdf  = pd.DataFrame(columns=['label', 'fpath', 'points', 'gt'])
 
-			print(f'{type(points) = } - {points.shape = }')
-			print(f'{points = }')
+			#print(f'{type(points) = } - {points.shape = }')
+			#print(f'{points = }')
 
 			tmpdf  = dict()
 			tmpdf['label']  = label
@@ -651,28 +664,28 @@ def save_dataset(dataset, path, fname, parallel=False, also_pickle=False):
 
 def read_and_save_dataset_partitions(dataset_path, output_path='./', parallel=False):
 	test_dataset     = read_symmetry_dataset(dataset_path / 'test',  parallel=parallel)
-	save_dataset(test_dataset, './', 'test'  , also_pickle=False,    parallel=parallel)
+	save_dataset(test_dataset, output_path, 'test'  , also_pickle=False,    parallel=parallel)
 	del test_dataset
 	valid_dataset    = read_symmetry_dataset(dataset_path / 'valid', parallel=parallel)
-	save_dataset(valid_dataset, './', 'valid', also_pickle=False,    parallel=parallel)
+	save_dataset(valid_dataset, output_path, 'valid', also_pickle=False,    parallel=parallel)
 	del valid_dataset
 	train_dataset    = read_symmetry_dataset(dataset_path / 'train', parallel=parallel)
-	save_dataset(train_dataset, './', 'train', also_pickle=False,    parallel=parallel)
+	save_dataset(train_dataset, output_path, 'train', also_pickle=False,    parallel=parallel)
 	del train_dataset
 	return #train_dataset, valid_dataset, test_dataset
 
-def create_symmetry_dataloaders(symmetry_path, bs, gt_columns=None, only_test_set=False, valid_and_test_sets=False):
+def create_symmetry_dataloaders(symmetry_path, bs, extension='.xz', gt_columns=None, only_test_set=False, valid_and_test_sets=False):
 	train_dataset,    val_dataset,    test_dataset    = None, None, None
 	train_dataloader, val_dataloader, test_dataloader = None, None, None
 
 	print('.', end='', flush=True)
-	test_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, partition='test')
+	test_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, partition='test', extension=extension)
 
 	if not only_test_set:
 		print('.', end='', flush=True)
-		val_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, partition='valid')
+		val_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, partition='valid', extension=extension)
 		print('.', end='', flush=True)
-		train_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, partition='train')		# keep this one as the last because it's pretty slow
+		train_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, partition='train', extension=extension)		# keep this one as the last because it's pretty slow
 	else:
 		print(f'Warning: using only test set for dataloaders...')
 
@@ -754,7 +767,7 @@ if __name__ == '__main__':
 	if test_one_batch:
 		#symmetry_path = Path('../data/Symmetry')
 		symmetry_path = Path('./')
-		trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_columns='label', bs=16, only_test_set=True)
+		trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_columns='label', bs=16, only_test_set=True, extension='.gz')
 
 		one_batch = next(iter(testDataLoader))
 		show_one_batch(one_batch)
