@@ -140,7 +140,8 @@ class RegressionHead(nn.Module):
 		return pop, norm_flat
 
 class RegressionModel(nn.Module):
-	def __init__(self, num_features_in, conv_features_out=256, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False):
+	#def __init__(self, num_features_in, conv_features_out=256, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False):
+	def __init__(self, num_features_in, conv_features_out=256, pop_floats=-1, normal_floats=-1, normal_max_rows=-1, debug=False):
 		super(RegressionModel, self).__init__()
 
 		self.debug = debug
@@ -175,8 +176,11 @@ class RegressionModel(nn.Module):
 		self.act4 = nn.ReLU()
 
 		#self.output1 = nn.Conv2d(feature_size, self.pop_floats, kernel_size=3, padding=1)
+		'''
 		self.output1 = nn.Conv1d(conv_features_out, self.pop_floats, 1)
 		self.output2 = nn.Conv1d(conv_features_out, self.normal_floats * self.normal_max_rows, 1)
+		'''
+		self.output  = nn.Conv1d(conv_features_out, 1, 1)
 
 		if self.debug:
 			print(f'RegressionModel.__init__() - pop_floats: {pop_floats} - normal_floats: {normal_floats} - normal_max_rows: {normal_max_rows}')
@@ -202,10 +206,15 @@ class RegressionModel(nn.Module):
 		out = self.conv4(out)
 		out = self.act4(out)
 
-		#out = self.output(out)
+		'''
 		out_pop  = self.output1(out)
 		out_norm = self.output2(out)
+		'''
+		out = self.output(out)
 
+		if self.debug:
+			print(f'RegressionModel.forward() - out.shape : {out.shape } - out : {out}')
+		'''
 		if self.debug:
 			print(f'RegressionModel.forward() - out_pop.shape : {out_pop.shape } - out_pop : {out_pop}')
 			print(f'RegressionModel.forward() - out_norm.shape: {out_norm.shape} - out_norm: {out_norm}')
@@ -225,6 +234,8 @@ class RegressionModel(nn.Module):
 			print(f'RegressionModel.forward() - out_norm.shape: {out_norm.shape} - out_norm: {out_norm}')
 
 		return [out_pop, out_norm]
+		'''
+		return out
 
 
 class CombinedLoss(nn.Module):
@@ -280,8 +291,14 @@ class get_model(nn.Module):
 		self.bn1 = nn.BatchNorm1d(512)
 		self.bn2 = nn.BatchNorm1d(256)
 
+
+		self.pop_floats	     =  3	# point on plane coordinates (x,y,z)
+		self.normal_floats   =  3	# normal (nx,ny,nz)
+		self.normal_max_rows = 14	# 14x normals per each input point cloud
+
 		#self.regr = RegressionHead(pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False)
-		self.regr = RegressionModel(num_features_in=256, conv_features_out=128, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=True)
+		#self.regr = RegressionModel(num_features_in=256, conv_features_out=128, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=True)
+		self.regr = [RegressionModel(num_features_in=256, conv_features_out=32, debug=True) for i in range(self.pop_floats)]
 
 		'''
 		self.y_range = y_range
@@ -298,7 +315,8 @@ class get_model(nn.Module):
 		x = F.relu(self.bn2(self.dropout(self.fc2(x))))
 
 		print(f'get_model.forward() {x.shape = }')
-		x = self.regr(x)
+		#x = self.regr(x)
+		x = [self.regr[i](x) for i in range(self.pop_floats)]
 		'''
 		x = self.fc3(x)
 		if self.y_range is not None:
