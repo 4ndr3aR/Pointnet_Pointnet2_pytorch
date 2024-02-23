@@ -140,7 +140,7 @@ class RegressionHead(nn.Module):
 		return pop, norm_flat
 
 class RegressionModel(nn.Module):
-	def __init__(self, num_features_in, feature_size=256, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False):
+	def __init__(self, num_features_in, conv_features_out=256, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False):
 		super(RegressionModel, self).__init__()
 
 		self.debug = debug
@@ -156,30 +156,40 @@ class RegressionModel(nn.Module):
  96         self.bn2 = nn.BatchNorm1d(128)
 		'''
 
+
+
 		#self.conv1 = nn.Conv2d(num_features_in, feature_size, kernel_size=3, padding=1)
-		self.conv1 = nn.Conv1d(num_features_in, feature_size, 1)
+		self.conv1 = nn.Conv1d(num_features_in, conv_features_out, 1)
 		self.act1 = nn.ReLU()
 
 		#self.conv2 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
-		self.conv2 = nn.Conv1d(feature_size, feature_size, 1)
+		self.conv2 = nn.Conv1d(conv_features_out, conv_features_out, 1)
 		self.act2 = nn.ReLU()
 
 		#self.conv3 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
-		self.conv3 = nn.Conv1d(feature_size, feature_size, 1)
+		self.conv3 = nn.Conv1d(conv_features_out, conv_features_out, 1)
 		self.act3 = nn.ReLU()
 
 		#self.conv4 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
-		self.conv4 = nn.Conv1d(feature_size, feature_size, 1)
+		self.conv4 = nn.Conv1d(conv_features_out, conv_features_out, 1)
 		self.act4 = nn.ReLU()
 
 		#self.output1 = nn.Conv2d(feature_size, self.pop_floats, kernel_size=3, padding=1)
-		self.output1 = nn.Conv1d(feature_size, self.pop_floats, 1)
-		#self.output2 = nn.Conv2d(feature_size, self.normal_floats * self.normal_max_rows, kernel_size=3, padding=1)
+		self.output1 = nn.Conv1d(conv_features_out, self.pop_floats, 1)
+		self.output2 = nn.Conv1d(conv_features_out, self.normal_floats * self.normal_max_rows, 1)
 
 		if self.debug:
 			print(f'RegressionModel.__init__() - pop_floats: {pop_floats} - normal_floats: {normal_floats} - normal_max_rows: {normal_max_rows}')
 
 	def forward(self, x):
+		# [N, C, W, H]
+		# RuntimeError: Given groups=1, weight of size [128, 256, 1], expected input[1, 4, 256] to have 256 channels, but got 4 channels instead
+		# RuntimeError: Given groups=1, weight of size [1, 256, 1], expected input[1, 4, 256] to have 256 channels, but got 4 channels instead
+		# out is B x C x W x H, with C = 4*num_anchors
+		print(f'RegressionModel.forward() - {x.shape = }')
+		x = x.permute(1, 0)
+		print(f'RegressionModel.forward() - {x.shape = }')
+
 		out = self.conv1(x)
 		out = self.act1(out)
 
@@ -193,20 +203,28 @@ class RegressionModel(nn.Module):
 		out = self.act4(out)
 
 		#out = self.output(out)
-		out = self.output1(out)
+		out_pop  = self.output1(out)
+		out_norm = self.output2(out)
 
 		if self.debug:
-			print(f'RegressionModel.forward() - out.shape: {out.shape} - out: {out}')
+			print(f'RegressionModel.forward() - out_pop.shape : {out_pop.shape } - out_pop : {out_pop}')
+			print(f'RegressionModel.forward() - out_norm.shape: {out_norm.shape} - out_norm: {out_norm}')
 		# out is B x C x W x H, with C = 4*num_anchors
-		out = out.permute(0, 2, 3, 1)
+		#out = out.permute(0, 2, 3, 1)
+		out_pop  = out_pop.permute (1, 0)
+		out_norm = out_norm.permute(1, 0)
 		if self.debug:
-			print(f'RegressionModel.forward() - out.shape: {out.shape} - out: {out}')
+			print(f'RegressionModel.forward() - out_pop.shape : {out_pop.shape } - out_pop : {out_pop}')
+			print(f'RegressionModel.forward() - out_norm.shape: {out_norm.shape} - out_norm: {out_norm}')
 
-		out = out.contiguous().view(out.shape[0], -1, 3)
+		#out = out.contiguous().view(out.shape[0], -1, 3)
+		out_pop  = out_pop.contiguous() #.view(out.shape[0], -1, 3)
+		out_norm = out_norm.contiguous()
 		if self.debug:
-			print(f'RegressionModel.forward() - out.shape: {out.shape} - out: {out}')
+			print(f'RegressionModel.forward() - out_pop.shape : {out_pop.shape } - out_pop : {out_pop}')
+			print(f'RegressionModel.forward() - out_norm.shape: {out_norm.shape} - out_norm: {out_norm}')
 
-		return out
+		return [out_pop, out_norm]
 
 
 class CombinedLoss(nn.Module):
@@ -263,7 +281,7 @@ class get_model(nn.Module):
 		self.bn2 = nn.BatchNorm1d(256)
 
 		#self.regr = RegressionHead(pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False)
-		self.regr = RegressionModel(num_features_in=256, feature_size=128, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=True)
+		self.regr = RegressionModel(num_features_in=256, conv_features_out=128, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=True)
 
 		'''
 		self.y_range = y_range
@@ -279,6 +297,7 @@ class get_model(nn.Module):
 		x = F.relu(self.bn1(self.fc1(x)))
 		x = F.relu(self.bn2(self.dropout(self.fc2(x))))
 
+		print(f'get_model.forward() {x.shape = }')
 		x = self.regr(x)
 		'''
 		x = self.fc3(x)
