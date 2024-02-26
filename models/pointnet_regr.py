@@ -140,8 +140,8 @@ class RegressionHead(nn.Module):
 		return pop, norm_flat
 
 class RegressionModel(nn.Module):
-	#def __init__(self, num_features_in, conv_features_out=256, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False):
-	def __init__(self, num_features_in, conv_features_out=256, pop_floats=-1, normal_floats=-1, normal_max_rows=-1, debug=False):
+	#def __init__(self, num_features_in, conv_features_out=256, pop_floats=-1, normal_floats=-1, normal_max_rows=-1, debug=False):
+	def __init__(self, num_features_in, conv_features_out=256, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False):
 		super(RegressionModel, self).__init__()
 
 		self.debug = debug
@@ -176,10 +176,10 @@ class RegressionModel(nn.Module):
 		self.act4 = nn.ReLU()
 
 		#self.output1 = nn.Conv2d(feature_size, self.pop_floats, kernel_size=3, padding=1)
-		'''
+		''''''
 		self.output1 = nn.Conv1d(conv_features_out, self.pop_floats, 1)
 		self.output2 = nn.Conv1d(conv_features_out, self.normal_floats * self.normal_max_rows, 1)
-		'''
+		''''''
 		self.output  = nn.Conv1d(conv_features_out, 1, 1)
 
 		if self.debug:
@@ -206,15 +206,15 @@ class RegressionModel(nn.Module):
 		out = self.conv4(out)
 		out = self.act4(out)
 
-		'''
+		''''''
 		out_pop  = self.output1(out)
 		out_norm = self.output2(out)
-		'''
-		out = self.output(out)
+		''''''
+		#out = self.output(out)
 
 		if self.debug:
 			print(f'RegressionModel.forward() - out.shape : {out.shape } - out : {out}')
-		'''
+		''''''
 		if self.debug:
 			print(f'RegressionModel.forward() - out_pop.shape : {out_pop.shape } - out_pop : {out_pop}')
 			print(f'RegressionModel.forward() - out_norm.shape: {out_norm.shape} - out_norm: {out_norm}')
@@ -234,7 +234,7 @@ class RegressionModel(nn.Module):
 			print(f'RegressionModel.forward() - out_norm.shape: {out_norm.shape} - out_norm: {out_norm}')
 
 		return [out_pop, out_norm]
-		'''
+		''''''
 		return out
 
 
@@ -298,7 +298,8 @@ class get_model(nn.Module):
 
 		#self.regr = RegressionHead(pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False)
 		#self.regr = RegressionModel(num_features_in=256, conv_features_out=128, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=True)
-		self.regr = [RegressionModel(num_features_in=256, conv_features_out=32, debug=True) for i in range(self.pop_floats)]
+		self.regr = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=True)
+		#self.regr = [RegressionModel(num_features_in=256, conv_features_out=32, debug=True) for i in range(self.pop_floats)]
 
 		'''
 		self.y_range = y_range
@@ -315,8 +316,8 @@ class get_model(nn.Module):
 		x = F.relu(self.bn2(self.dropout(self.fc2(x))))
 
 		print(f'get_model.forward() {x.shape = }')
-		#x = self.regr(x)
-		x = [self.regr[i](x) for i in range(self.pop_floats)]
+		x = self.regr(x)
+		#x = [self.regr[i](x) for i in range(self.pop_floats)]
 		'''
 		x = self.fc3(x)
 		if self.y_range is not None:
@@ -344,7 +345,6 @@ class get_loss(torch.nn.Module):
 		self.dataset = dataset
 
 	def forward(self, pred, target, trans_feat):
-		loss_lst = []
 		if self.dataset == 'symmetry':
 			torch.set_printoptions(profile="full")
 			torch.set_printoptions(linewidth=210)
@@ -364,20 +364,38 @@ class get_loss(torch.nn.Module):
 			#pred = pred.squeeze(1)
 			#loss = F.mse_loss(pred, target)
 
+			'''
 			for idx,pr in enumerate(pred):
 				tgt = target[idx].reshape(pr.shape)
 				loss_itm = F.mse_loss(pr, tgt.float())
 				print(f'get_loss.forward() - loss_itm[{idx}]: {loss_itm}')
 				loss_lst.append(loss_itm)
-
-			loss = sum(loss_lst)
+			'''
+			loss, _ = self.list_target_loss_impl(pred, target)
 		else:
 			loss = F.nll_loss(pred, target)
 		mat_diff_loss = feature_transform_regularizer(trans_feat)
-		print(f'get_loss.forward() - loss_lst: {loss_lst} - mat_diff_loss: {mat_diff_loss} - final loss: {loss}')
+		print(f'get_loss.forward() - final loss: {loss} - mat_diff_loss: {mat_diff_loss}')
 
 		total_loss = loss + mat_diff_loss * self.mat_diff_loss_scale
 		#total_loss = loss_lst[0]
 
 		print(f'get_loss.forward() - total_loss: {total_loss} - type(total_loss): {type(total_loss)} - dtype(total_loss): {total_loss.dtype}')
 		return total_loss.float()
+
+	@staticmethod
+	def list_target_loss_impl(pred, target, debug=False):
+		loss_lst = []
+		for idx,pr in enumerate(pred):
+			tgt = target[idx].reshape(pr.shape)
+			part_loss_lst = []
+			for jdx,itm in enumerate(zip(pr, tgt)):
+				#print(f'get_loss.forward() - itm[{jdx}]: {itm}')
+				loss_itm = F.mse_loss(itm[0], itm[1].float())
+				print(f'list_target_loss_impl() - loss_itm[{idx}][{jdx}]: {loss_itm}')
+				part_loss_lst.append(loss_itm)
+			loss_lst.append(sum(part_loss_lst))
+			print(f'list_target_loss_impl() - loss_itm[{idx}]: {sum(part_loss_lst)}')
+		loss = sum(loss_lst)
+		print(f'list_target_loss_impl() - loss_lst: {loss_lst}')
+		return loss, loss_lst

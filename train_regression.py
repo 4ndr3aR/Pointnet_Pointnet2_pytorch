@@ -122,9 +122,9 @@ def test(model, loader, num_class=40):
 
     return instance_acc, class_acc
 
-def test_regression(model, loader, num_class=1, debug=False):
+def test_regression(model, regressor, loader, num_class=1, debug=True):
 	mse_total = torch.zeros(len(loader))
-	regressor = model.eval()
+	regressor = regressor.eval()
 
 	if debug:
 		log_string(f'type(loader): {type(loader)}')
@@ -154,7 +154,10 @@ def test_regression(model, loader, num_class=1, debug=False):
 			'''
 
 		if debug:
-			log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
+			if isinstance(pred, torch.Tensor):
+				log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
+			elif isinstance(target, list):
+				log_string(f'[{j}] pred   : {len(pred)} - target   : {len(target)}')
 			log_string(f'[{j}] pred   : {pred} - target   : {target}')
 			log_string(f'[{j}] pred[0]: {pred[0]} - target[0]: {target[0]}')
 		if isinstance(pred, torch.Tensor):
@@ -164,13 +167,17 @@ def test_regression(model, loader, num_class=1, debug=False):
 		else:
 			log_string(f'Unhandled pred/target types: {type(pred)} - {type(target)}')
 		if debug:
-			log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
+			if isinstance(pred, torch.Tensor):
+				log_string(f'[{j}] pred   : {pred.shape} - target   : {target.shape}')
+			elif isinstance(target, list):
+				log_string(f'[{j}] pred   : {len(pred)} - target   : {len(target)}')
 
-		mse_tensor = None
+		mse_loss_lst = None
 		if isinstance(pred, torch.Tensor) and isinstance(target, torch.Tensor):
 			assert(pred.shape == target.shape)
-			mse_tensor = (pred - target) ** 2
+			mse_loss_lst = [(pred - target) ** 2]
 		elif (isinstance(pred, list) or isinstance(pred, tuple)) and (isinstance(target, list) or isinstance(target, tuple)):
+			'''
 			mse_tensor_lst = []
 			for idx,pr in enumerate(pred):
 				log_string(f'[{j}] pred[{idx}]: {pr.shape} - target[{idx}]: {target[idx].shape}')
@@ -179,14 +186,19 @@ def test_regression(model, loader, num_class=1, debug=False):
 				mse_tensor_itm = (pr - tgt) ** 2
 				mse_tensor_lst.append(mse_tensor_itm.sum())
 			mse_tensor = torch.stack(mse_tensor_lst)
+			'''
+			loss, loss_lst = model.get_loss.list_target_loss_impl(pred, target)
+			mse_loss_lst = loss_lst
 		else:
 			log_string(f'Unhandled pred/target types: {type(pred)} - {type(target)}')
 
+		'''
 		if debug:
 			log_string(f'[{j}] mse_tensor: {mse_tensor.shape}')
 			log_string(f'[{j}] mse_tensor: {mse_tensor}')
 			log_string(f'[{j}] mse_total : {mse_total.shape}')
-		mse_total[j] = mse_tensor.sum()
+		'''
+		mse_total[j] = mse_loss_lst.sum() if isinstance(mse_loss_lst, torch.Tensor) else sum(mse_loss_lst)
 		if debug:
 			log_string(f'[{j}] mse_total : {mse_total}')
 
@@ -417,7 +429,7 @@ def main(args):
 
         with torch.no_grad():
             if y_range is not None or args.symmetry_dataset or args.curveml_dataset:
-                mse_mean, mse_sum, mse = test_regression(regressor.eval(), valDataLoader, num_class=num_class)
+                mse_mean, mse_sum, mse = test_regression(model, regressor.eval(), valDataLoader, num_class=num_class)
 
                 if (mse < best_mse):
                     best_epoch    = epoch + 1
