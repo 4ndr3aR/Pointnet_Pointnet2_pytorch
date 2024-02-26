@@ -141,7 +141,7 @@ class RegressionHead(nn.Module):
 
 class RegressionModel(nn.Module):
 	#def __init__(self, num_features_in, conv_features_out=256, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False):
-	#def __init__(self, num_features_in, conv_features_out=256, pop_floats=-1, normal_floats=-1, debug=False):
+	#def __init__(self, num_features_in, conv_features_out=256, pop_floats=-1, normal_floats=-1, normal_max_rows=-1, debug=False):
 	def __init__(self, num_features_in, conv_features_out=256, pop_floats=-1, normal_floats=-1, normal_max_rows=-1, debug=False):
 		super(RegressionModel, self).__init__()
 
@@ -189,8 +189,8 @@ class RegressionModel(nn.Module):
 		if pop_floats != -1:
 			self.output  = nn.Conv1d(conv_features_out, self.pop_floats, 1)
 		else:
-			self.output  = nn.Conv1d(conv_features_out, self.normal_floats * self.normal_max_rows, 1)
-			#self.output  = nn.Conv1d(conv_features_out, self.normal_floats, 1)
+			#self.output  = nn.Conv1d(conv_features_out, self.normal_floats * self.normal_max_rows, 1)
+			self.output  = nn.Conv1d(conv_features_out, self.normal_floats, 1)
 
 		if self.debug:
 			print(f'RegressionModel.__init__() - pop_floats: {pop_floats} - normal_floats: {normal_floats} - normal_max_rows: {normal_max_rows}')
@@ -305,6 +305,7 @@ class get_model(nn.Module):
 		self.bn1 = nn.BatchNorm1d(512)
 		self.bn2 = nn.BatchNorm1d(256)
 
+
 		self.pop_floats	     =  3	# point on plane coordinates (x,y,z)
 		self.normal_floats   =  3	# normal (nx,ny,nz)
 		self.normal_max_rows = 14	# 14x normals per each input point cloud
@@ -313,14 +314,13 @@ class get_model(nn.Module):
 		#self.regr = RegressionModel(num_features_in=256, conv_features_out=128, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=True)
 		#self.regr = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=True)
 		#self.regr = [RegressionModel(num_features_in=256, conv_features_out=32, debug=True) for i in range(self.pop_floats)]
-		''''''
+		'''
 		self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=3 , normal_floats=-1, normal_max_rows=-1, debug=True)
 		self.regr_norm = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , normal_max_rows=14, debug=True)
-		''''''
 		'''
 		self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=3 , normal_floats=-1, debug=True)
-		self.regr_norm = [RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=True) for i in range(self.normal_max_rows)]
-		'''
+		#self.regr_norm = [RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=True) for i in range(self.normal_max_rows)]
+		self.regr_norm = nn.ModuleList([RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=True) for i in range(self.normal_max_rows)])
 
 		'''
 		self.y_range = y_range
@@ -339,13 +339,11 @@ class get_model(nn.Module):
 		print(f'get_model.forward() {x.shape = }')
 		#x = self.regr(x)
 		#x = [self.regr[i](x) for i in range(self.pop_floats)]
-		x_pop, x_norm = self.regr_pop(x), self.regr_norm(x)
-		'''
+		#x_pop, x_norm = self.regr_pop(x), self.regr_norm(x)
 		x_pop  = self.regr_pop(x) 
 		x_norm = []
 		for idx in range(self.normal_max_rows):
 			x_norm.append(self.regr_norm[idx](x))
-		'''
 		'''
 		x = self.fc3(x)
 		if self.y_range is not None:
@@ -353,6 +351,10 @@ class get_model(nn.Module):
 		else:
 			x = F.log_softmax(x, dim=1)
 		'''
+
+
+		print(f'get_model.forward() - Returning {type(x_pop)} - {type(x_norm)}')
+
 		#return x, trans_feat
 		return [x_pop, x_norm], trans_feat
 
@@ -416,8 +418,14 @@ class get_loss(torch.nn.Module):
 	def list_target_loss_impl(pred, target, debug=False):
 		loss_lst = []
 		for idx,pr in enumerate(pred):
-			tgt = target[idx].reshape(pr.shape)
+			if isinstance(pr, torch.Tensor):
+				tgt = target[idx].reshape(pr.shape)
+			elif isinstance(pr, list):
+				print(f'{pr[0].shape = }')
+				tgt = target[idx].reshape([len(pr), pr[0].shape[0], pr[0].shape[1]])			# here we want [5, 3, 14] - [bs, normal_floats, normal_max_rows]
+			print(f'list_target_loss_impl() - reshaped target[{idx}]: {tgt.shape} - type(tgt): {type(tgt)} - len(tgt): {len(tgt)} - {tgt}')
 			part_loss_lst = []
+			print(f'list_target_loss_impl() - looping over pr and tgt: {len(pr)} - {len(tgt)} - with shapes: {pr[0].shape} - {tgt[0].shape}')
 			for jdx,itm in enumerate(zip(pr, tgt)):
 				#print(f'get_loss.forward() - itm[{jdx}]: {itm}')
 				loss_itm = F.mse_loss(itm[0], itm[1].float())
