@@ -200,9 +200,11 @@ class RegressionModel(nn.Module):
 		# RuntimeError: Given groups=1, weight of size [128, 256, 1], expected input[1, 4, 256] to have 256 channels, but got 4 channels instead
 		# RuntimeError: Given groups=1, weight of size [1, 256, 1], expected input[1, 4, 256] to have 256 channels, but got 4 channels instead
 		# out is B x C x W x H, with C = 4*num_anchors
-		print(f'RegressionModel.forward() - {x.shape = }')
+		if self.debug:
+			print(f'RegressionModel.forward() - {x.shape = }')
 		x = x.permute(1, 0)
-		print(f'RegressionModel.forward() - {x.shape = }')
+		if self.debug:
+			print(f'RegressionModel.forward() - {x.shape = }')
 
 		out = self.conv1(x)
 		out = self.act1(out)
@@ -291,12 +293,15 @@ class ExtendedSegment(Segment):
 
 
 class get_model(nn.Module):
-	def __init__(self, out_features=40, normal_channel=True, y_range=None):
+	def __init__(self, out_features=40, normal_channel=True, y_range=None, debug=False):
 		super(get_model, self).__init__()
+		self.debug = debug
+
 		if normal_channel:
 			channel = 6
 		else:
 			channel = 3
+
 		self.feat = PointNetEncoder(global_feat=True, feature_transform=True, channel=channel)
 		self.fc1 = nn.Linear(1024, 512)
 		self.fc2 = nn.Linear(512, 256)
@@ -315,12 +320,12 @@ class get_model(nn.Module):
 		#self.regr = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=True)
 		#self.regr = [RegressionModel(num_features_in=256, conv_features_out=32, debug=True) for i in range(self.pop_floats)]
 		'''
-		self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=3 , normal_floats=-1, normal_max_rows=-1, debug=True)
-		self.regr_norm = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , normal_max_rows=14, debug=True)
+		self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=3 , normal_floats=-1, normal_max_rows=-1, debug=False)
+		self.regr_norm = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , normal_max_rows=14, debug=False)
 		'''
-		self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=3 , normal_floats=-1, debug=True)
+		self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=3 , normal_floats=-1, debug=False)
 		#self.regr_norm = [RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=True) for i in range(self.normal_max_rows)]
-		self.regr_norm = nn.ModuleList([RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=True) for i in range(self.normal_max_rows)])
+		self.regr_norm = nn.ModuleList([RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=False) for i in range(self.normal_max_rows)])
 
 		'''
 		self.y_range = y_range
@@ -336,7 +341,8 @@ class get_model(nn.Module):
 		x = F.relu(self.bn1(self.fc1(x)))
 		x = F.relu(self.bn2(self.dropout(self.fc2(x))))
 
-		print(f'get_model.forward() {x.shape = }')
+		if self.debug:
+			print(f'get_model.forward() {x.shape = }')
 		#x = self.regr(x)
 		#x = [self.regr[i](x) for i in range(self.pop_floats)]
 		#x_pop, x_norm = self.regr_pop(x), self.regr_norm(x)
@@ -353,7 +359,8 @@ class get_model(nn.Module):
 		'''
 
 
-		print(f'get_model.forward() - Returning {type(x_pop)} - {type(x_norm)}')
+		if self.debug:
+			print(f'get_model.forward() - Returning {type(x_pop)} - {type(x_norm)}')
 
 		#return x, trans_feat
 		return [x_pop, x_norm], trans_feat
@@ -369,29 +376,32 @@ class get_model(nn.Module):
 				print(f'cuda target[{idx}]: {type(target[idx])} -  {target[idx]}')
 
 class get_loss(torch.nn.Module):
-	def __init__(self, y_range=None, mat_diff_loss_scale=10, dataset='symmetry'):
+	def __init__(self, y_range=None, mat_diff_loss_scale=10, dataset='symmetry', debug=False):
 		super(get_loss, self).__init__()
 		self.mat_diff_loss_scale = mat_diff_loss_scale
 		self.y_range = y_range
 		self.dataset = dataset
+		self.debug   = debug
 
 	def forward(self, pred, target, trans_feat):
 		if self.dataset == 'symmetry':
 			torch.set_printoptions(profile="full")
 			torch.set_printoptions(linewidth=210)
-			print(f'get_loss.forward() - type(pred): {type(pred)} - type(target): {type(target)}')
-			print(f'get_loss.forward() - len(pred): {len(pred)} - len(target): {len(target)}')
-			print(f'get_loss.forward() - pred: {pred} - target: {target}')
+			if self.debug:
+				print(f'get_loss.forward() - type(pred): {type(pred)} - type(target): {type(target)}')
+				print(f'get_loss.forward() - len(pred): {len(pred)} - len(target): {len(target)}')
+				print(f'get_loss.forward() - pred: {pred} - target: {target}')
 			torch.set_printoptions(profile="default")
-			if isinstance(pred, torch.Tensor):
-				print(f'get_loss.forward() - pred.shape: {pred.shape}')
-			if isinstance(target, list):
-				for idx,tgt in enumerate(target):
-					if isinstance(tgt, torch.Tensor):
-						print(f'get_loss.forward() - tensor target[{idx}].shape: {tgt.shape}')
-					elif isinstance(tgt, l):
-						print(f'get_loss.forward() - list   target[{idx}].len  : {len(tgt)}')
-			print(f'get_loss.forward() - pred: {pred} - target: {target}')
+			if self.debug:
+				if isinstance(pred, torch.Tensor):
+					print(f'get_loss.forward() - pred.shape: {pred.shape}')
+				if isinstance(target, list):
+					for idx,tgt in enumerate(target):
+						if isinstance(tgt, torch.Tensor):
+							print(f'get_loss.forward() - tensor target[{idx}].shape: {tgt.shape}')
+						elif isinstance(tgt, l):
+							print(f'get_loss.forward() - list   target[{idx}].len  : {len(tgt)}')
+				print(f'get_loss.forward() - pred: {pred} - target: {target}')
 			#pred = pred.squeeze(1)
 			#loss = F.mse_loss(pred, target)
 
@@ -406,12 +416,14 @@ class get_loss(torch.nn.Module):
 		else:
 			loss = F.nll_loss(pred, target)
 		mat_diff_loss = feature_transform_regularizer(trans_feat)
-		print(f'get_loss.forward() - final loss: {loss} - mat_diff_loss: {mat_diff_loss}')
+		if self.debug:
+			print(f'get_loss.forward() - final loss: {loss} - mat_diff_loss: {mat_diff_loss}')
 
 		total_loss = loss + mat_diff_loss * self.mat_diff_loss_scale
 		#total_loss = loss_lst[0]
 
-		print(f'get_loss.forward() - total_loss: {total_loss} - type(total_loss): {type(total_loss)} - dtype(total_loss): {total_loss.dtype}')
+		if self.debug:
+			print(f'get_loss.forward() - total_loss: {total_loss} - type(total_loss): {type(total_loss)} - dtype(total_loss): {total_loss.dtype}')
 		return total_loss.float()
 
 	@staticmethod
@@ -421,18 +433,24 @@ class get_loss(torch.nn.Module):
 			if isinstance(pr, torch.Tensor):
 				tgt = target[idx].reshape(pr.shape)
 			elif isinstance(pr, list):
-				print(f'{pr[0].shape = }')
+				if False:
+					print(f'{pr[0].shape = }')
 				tgt = target[idx].reshape([len(pr), pr[0].shape[0], pr[0].shape[1]])			# here we want [5, 3, 14] - [bs, normal_floats, normal_max_rows]
-			print(f'list_target_loss_impl() - reshaped target[{idx}]: {tgt.shape} - type(tgt): {type(tgt)} - len(tgt): {len(tgt)} - {tgt}')
+			if debug:
+				print(f'list_target_loss_impl() - reshaped target[{idx}]: {tgt.shape} - type(tgt): {type(tgt)} - len(tgt): {len(tgt)} - {tgt}')
 			part_loss_lst = []
-			print(f'list_target_loss_impl() - looping over pr and tgt: {len(pr)} - {len(tgt)} - with shapes: {pr[0].shape} - {tgt[0].shape}')
+			if debug:
+				print(f'list_target_loss_impl() - looping over pr and tgt: {len(pr)} - {len(tgt)} - with shapes: {pr[0].shape} - {tgt[0].shape}')
 			for jdx,itm in enumerate(zip(pr, tgt)):
 				#print(f'get_loss.forward() - itm[{jdx}]: {itm}')
 				loss_itm = F.mse_loss(itm[0], itm[1].float())
-				print(f'list_target_loss_impl() - loss_itm[{idx}][{jdx}]: {loss_itm}')
+				if debug:
+					print(f'list_target_loss_impl() - loss_itm[{idx}][{jdx}]: {loss_itm}')
 				part_loss_lst.append(loss_itm)
 			loss_lst.append(sum(part_loss_lst))
-			print(f'list_target_loss_impl() - loss_itm[{idx}]: {sum(part_loss_lst)}')
+			if debug:
+				print(f'list_target_loss_impl() - loss_itm[{idx}]: {sum(part_loss_lst)}')
 		loss = sum(loss_lst)
-		print(f'list_target_loss_impl() - loss_lst: {loss_lst}')
+		if debug:
+			print(f'list_target_loss_impl() - loss_lst: {loss_lst}')
 		return loss, loss_lst

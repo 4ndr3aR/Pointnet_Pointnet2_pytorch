@@ -44,6 +44,12 @@ cmdlines:
 
 ./train_regression.py --symmetry_dataset --batch_size 4 --gt_column cls type popx popy popz nx ny nz rot --num_classes 1 --model pointnet_cls --log_dir pointnet-nonormal-symmetry-bs128 --only_test_set
 
+./train_regression.py --symmetry_dataset --batch_size 128 --learning_rate 0.01 --gt_column cls type popx popy popz nx ny nz rot --num_classes 1 --model pointnet_regr --log_dir pointnet-nonormal-symmetry-bs128
+
+quick run:
+
+./train_regression.py --symmetry_dataset --batch_size 5 --learning_rate 0.05 --gt_column cls type popx popy popz nx ny nz rot --num_classes 1 --model pointnet_regr --log_dir pointnet-nonormal-symmetry-bs5 --only_test_set
+
 
 '''
 
@@ -122,7 +128,7 @@ def test(model, loader, num_class=40):
 
     return instance_acc, class_acc
 
-def test_regression(model, regressor, loader, num_class=1, debug=True):
+def test_regression(model, regressor, loader, num_class=1, debug=False):
 	mse_total = torch.zeros(len(loader))
 	regressor = regressor.eval()
 
@@ -276,8 +282,8 @@ def main(args):
     elif args.symmetry_dataset:
         log_string('Loading the Symmetry dataset...')
         #symmetry_path = Path('./data/Symmetry')
-        #symmetry_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz/symmetries-dataset-astroid-geom_petal-100k')
-        symmetry_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz/symmetries-dataset-astroid-geom_petal-10k')
+        symmetry_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz/symmetries-dataset-astroid-geom_petal-100k')
+        #symmetry_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz/symmetries-dataset-astroid-geom_petal-10k')
         gt_columns = args.gt_columns if args.gt_columns is not None else 'label'
         log_string(f'Using column {gt_columns} as ground truth')
         trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_columns=gt_columns, bs=args.batch_size, only_test_set=args.only_test_set, extension='.gz')
