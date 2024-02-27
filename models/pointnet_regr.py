@@ -431,16 +431,19 @@ class get_loss(torch.nn.Module):
 		loss_lst = []
 		for idx,pr in enumerate(pred):
 			if isinstance(pr, torch.Tensor):
+				print(f'Taking into consideration (and reshaping) pred[{idx}]:\n{pr} with shape {pr.shape}\nand target[{idx}]:\n{target[idx]} with shape {target[idx].shape}')
 				tgt = target[idx].reshape(pr.shape)
 			elif isinstance(pr, list):
 				if False:
 					print(f'{pr[0].shape = }')
-				tgt = target[idx].reshape([len(pr), pr[0].shape[0], pr[0].shape[1]])			# here we want [5, 3, 14] - [bs, normal_floats, normal_max_rows]
+				print(f'Taking into consideration (and reshaping) pred[{idx}]:\n{pr} with len {len(pr)}\nand target[{idx}]:\n{target[idx]} with shape {target[idx].shape}')
+				tgt = target[idx].permute(0, 2, 1).reshape([len(pr), pr[0].shape[0], pr[0].shape[1]])			# here we want [5, 3, 14] - [bs, normal_floats, normal_max_rows]
 			if debug:
 				print(f'list_target_loss_impl() - reshaped target[{idx}]: {tgt.shape} - type(tgt): {type(tgt)} - len(tgt): {len(tgt)} - {tgt}')
 			part_loss_lst = []
 			if debug:
 				print(f'list_target_loss_impl() - looping over pr and tgt: {len(pr)} - {len(tgt)} - with shapes: {pr[0].shape} - {tgt[0].shape}')
+			print(f'list_target_loss_impl() - looping over\n{pr}\n ------------------------ and\n{tgt}')
 			for jdx,itm in enumerate(zip(pr, tgt)):
 				#print(f'get_loss.forward() - itm[{jdx}]: {itm}')
 				loss_itm = F.mse_loss(itm[0], itm[1].float())

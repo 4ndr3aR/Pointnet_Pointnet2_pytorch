@@ -167,7 +167,7 @@ def load_dataset(path, fname, debug=False):
 			#	print(f'Read {len(data)} samples - {type(data[0]) = } - {len(data[0]) = } - {data[0][0].shape = } - {data[0][1] = } - {data[0][2] = }')
 	elif Path(Path(path) / fname).is_file() and Path(fname).suffix == '.gz':
 		src_fn    = Path(path) / Path(str(fname))
-		if debug or True:
+		if debug:
 			print(f'Parallel-reading PGZIP compressed dataset...')
 		n_threads = multiprocessing.cpu_count() * 2
 		block_sz  = 1024*1024*1024
