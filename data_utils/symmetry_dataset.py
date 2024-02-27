@@ -251,7 +251,6 @@ class Symmetry(Dataset):
 		return categorified_angles
 
 	def __getitem__(self, idx, debug=False, debug_verbose=False):
-		#debug = True
 		# Dataframe columns: ['angle', 'trans_x', 'trans_y', 'a', 'b', 'n_petals', 'label', 'fpath', 'points']
 		#row = self.dataset.iloc[idx]
 		gt_columns = self.gt_columns
@@ -262,6 +261,9 @@ class Symmetry(Dataset):
 		#angle,trans_x,trans_y,a,b,n_petals = row['angle'],row['trans_x'],row['trans_y'],row['a'],row['b'],row['n_petals']
 		label, split, points, gt = row['label'], row['split'], row['points'], row['gt']
 
+		if isinstance(points, list):
+			points = points[0]			# TODO: remove me or I'll cause bugs!
+
 		'''
 		if debug:
 			print(f'1. __getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {split = } - {lbl = }')
@@ -269,6 +271,7 @@ class Symmetry(Dataset):
 		'''
 		# The symmetry dataset already contains real 3D point clouds, so no need for the np.hstack as in the CurveML dataset...
 		if debug_verbose:
+			print(f'0. __getitem__() idx: {idx} - {type(row) = } - {type(points) = }')
 			print(f'1. __getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {split = } - {lbl = }')
 			for gt_row in gt.iterrows():
 				idx     = gt_row[0]
