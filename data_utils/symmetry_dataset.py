@@ -251,6 +251,12 @@ class Symmetry(Dataset):
 		return categorified_angles
 
 	def __getitem__(self, idx, debug=False, debug_verbose=False):
+
+		torch.set_printoptions	(precision=3)
+		torch.set_printoptions	(sci_mode=False)
+		np.set_printoptions	(precision=3)
+		np.set_printoptions	(suppress=True)
+
 		# Dataframe columns: ['angle', 'trans_x', 'trans_y', 'a', 'b', 'n_petals', 'label', 'fpath', 'points']
 		#row = self.dataset.iloc[idx]
 		gt_columns = self.gt_columns
@@ -276,7 +282,7 @@ class Symmetry(Dataset):
 			for gt_row in gt.iterrows():
 				idx     = gt_row[0]
 				row_arr = gt_row[1].values
-				print(f'2. __getitem__() idx: {idx} - {label = } - {split = } - {points.shape = } - {gt.shape = } - {row_arr = }')
+				print(f'2. __getitem__() idx: {idx} - {label = } - {split = } - {points.shape = } - {gt.shape = } - row_arr = {np.array_str(row_arr, precision=3)}')
 
 		if self.max_points - points.shape[0] > 0:
 			# Duplicate points

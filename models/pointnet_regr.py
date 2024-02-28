@@ -428,32 +428,58 @@ class get_loss(torch.nn.Module):
 
 	@staticmethod
 	def list_target_loss_impl(pred, target, debug=False):
-		loss_lst = []
+		torch.set_printoptions(precision=3)
+		torch.set_printoptions(sci_mode=False)
+
+		print(f'list_target_loss_impl() ----------------------------------------------------------------------------------')
+		print(f'list_target_loss_impl() ----------------------------------------------------------------------------------')
+		print(f'list_target_loss_impl() ----------------------------------------------------------------------------------')
+
+		loss = 0
+		#loss_lst = []
 		for idx,pr in enumerate(pred):
-			if isinstance(pr, torch.Tensor):
-				print(f'Taking into consideration (and reshaping) pred[{idx}]:\n{pr} with shape {pr.shape}\nand target[{idx}]:\n{target[idx]} with shape {target[idx].shape}')
+			print(f'list_target_loss_impl() ==================================================================================')
+			print(f'list_target_loss_impl() ==================================================================================')
+			print(f'list_target_loss_impl() ==================================================================================')
+			if isinstance(pr, torch.Tensor):		# this is model.regr_pop, a predictor of 3 floats = [bs, 3] = [5, 3]
+				if debug:
+					print(f'Taking into consideration (and reshaping) pred[{idx}]:\n{pr} with shape {pr.shape}\nand target[{idx}]:\n{target[idx]} with shape {target[idx].shape}')
 				tgt = target[idx].reshape(pr.shape)
-			elif isinstance(pr, list):
+			elif isinstance(pr, list):			# this is model.regr_norm, a predictor of 3x14 floats = [bs, 3, 14] = [5, 3, 14]
 				if False:
 					print(f'{pr[0].shape = }')
 				print(f'Taking into consideration (and reshaping) pred[{idx}]:\n{pr} with len {len(pr)}\nand target[{idx}]:\n{target[idx]} with shape {target[idx].shape}')
-				tgt = target[idx].permute(0, 2, 1).reshape([len(pr), pr[0].shape[0], pr[0].shape[1]])			# here we want [5, 3, 14] - [bs, normal_floats, normal_max_rows]
+				#tgt = target[idx].permute(0, 2, 1).reshape([len(pr), pr[0].shape[0], pr[0].shape[1]])			# here we want [5, 3, 14] - [bs, normal_floats, normal_max_rows]
+				tgt = [target[idx][:,:,i] for i in range(target[idx].shape[2])]
 			if debug:
 				print(f'list_target_loss_impl() - reshaped target[{idx}]: {tgt.shape} - type(tgt): {type(tgt)} - len(tgt): {len(tgt)} - {tgt}')
-			part_loss_lst = []
+			#part_loss_lst = []
 			if debug:
 				print(f'list_target_loss_impl() - looping over pr and tgt: {len(pr)} - {len(tgt)} - with shapes: {pr[0].shape} - {tgt[0].shape}')
-			print(f'list_target_loss_impl() - looping over\n{pr}\n ------------------------ and\n{tgt}')
+				print(f'list_target_loss_impl() - looping over\n{pr}\n ------------------------ and\n{tgt}')
 			for jdx,itm in enumerate(zip(pr, tgt)):
-				#print(f'get_loss.forward() - itm[{jdx}]: {itm}')
+				pr_itm   = itm[0]
+				tgt_itm  = itm[1]
+				print(f'list_target_loss_impl()\n[{idx}][{jdx}] pr_itm: {pr_itm} - tgt_itm: {tgt_itm}')
 				loss_itm = F.mse_loss(itm[0], itm[1].float())
-				if debug:
+				if debug or True:
 					print(f'list_target_loss_impl() - loss_itm[{idx}][{jdx}]: {loss_itm}')
-				part_loss_lst.append(loss_itm)
-			loss_lst.append(sum(part_loss_lst))
+				#part_loss_lst.append(loss_itm)
+				#loss_lst.append(loss_itm)
+				loss = loss_itm + loss
+			#loss_lst.append(sum(part_loss_lst))
 			if debug:
-				print(f'list_target_loss_impl() - loss_itm[{idx}]: {sum(part_loss_lst)}')
-		loss = sum(loss_lst)
+				print(f'list_target_loss_impl() - {loss = }')
+			print(f'list_target_loss_impl() ##################################################################################')
+			print(f'list_target_loss_impl() ##################################################################################')
+			print(f'list_target_loss_impl() ##################################################################################')
+		#loss = sum(loss_lst)
+		'''
 		if debug:
 			print(f'list_target_loss_impl() - loss_lst: {loss_lst}')
-		return loss, loss_lst
+		'''
+
+		print(f'list_target_loss_impl() ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+		print(f'list_target_loss_impl() ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+		print(f'list_target_loss_impl() ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+		return loss#, loss_lst
