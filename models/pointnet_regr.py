@@ -412,7 +412,7 @@ class get_loss(torch.nn.Module):
 				print(f'get_loss.forward() - loss_itm[{idx}]: {loss_itm}')
 				loss_lst.append(loss_itm)
 			'''
-			loss, _ = self.list_target_loss_impl(pred, target)
+			loss = self.list_target_loss_impl(pred, target)
 		else:
 			loss = F.nll_loss(pred, target)
 		mat_diff_loss = feature_transform_regularizer(trans_feat)
@@ -460,8 +460,18 @@ class get_loss(torch.nn.Module):
 			for jdx,itm in enumerate(zip(pr, tgt)):
 				pr_itm   = itm[0]
 				tgt_itm  = itm[1]
-				print(f'list_target_loss_impl()\n[{idx}][{jdx}] pr_itm: {pr_itm} - tgt_itm: {tgt_itm}')
-				loss_itm = F.mse_loss(itm[0], itm[1].float())
+				print(f'list_target_loss_impl()\n[{idx}][{jdx}] - {pr_itm.shape} - {tgt_itm.shape} - pr_itm: {pr_itm} - tgt_itm: {tgt_itm}')
+				if len(pr_itm.shape) == 1:
+					loss_itm = F.mse_loss(itm[0], itm[1].float())
+				else:
+					for kdx,sub_itm in enumerate(zip(pr_itm, tgt_itm)):
+						pr_sub_itm   = sub_itm[0]
+						tgt_sub_itm  = sub_itm[1]
+						print(f'list_target_loss_impl()\n[{idx}][{jdx}][{kdx}] - {pr_sub_itm.shape} - {tgt_sub_itm.shape} - pr_sub_itm: {pr_sub_itm} - tgt_sub_itm: {tgt_sub_itm}')
+						loss_subitm = F.mse_loss(pr_sub_itm, tgt_sub_itm.float())
+						print(f'list_target_loss_impl() - loss_subitm[{idx}][{jdx}][{kdx}]: {loss_subitm}')
+					loss_itm = loss_subitm + loss_itm
+				#loss_itm = torch.sum(torch.abs(itm[0], itm[1].float()))
 				if debug or True:
 					print(f'list_target_loss_impl() - loss_itm[{idx}][{jdx}]: {loss_itm}')
 				#part_loss_lst.append(loss_itm)
@@ -480,6 +490,6 @@ class get_loss(torch.nn.Module):
 		'''
 
 		print(f'list_target_loss_impl() ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
-		print(f'list_target_loss_impl() ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+		print(f'list_target_loss_impl() ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {loss = }')
 		print(f'list_target_loss_impl() ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
 		return loss#, loss_lst

@@ -202,8 +202,8 @@ def test_regression(model, regressor, loader, num_classes=1, debug=False):
 				mse_tensor_lst.append(mse_tensor_itm.sum())
 			mse_tensor = torch.stack(mse_tensor_lst)
 			'''
-			loss, loss_lst = model.get_loss.list_target_loss_impl(pred, target)
-			mse_loss_lst = loss_lst
+			loss = model.get_loss.list_target_loss_impl(pred, target)
+			mse_loss_lst = [loss]
 		else:
 			log_string(f'Unhandled pred/target types: {type(pred)} - {type(target)}')
 
