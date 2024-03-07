@@ -26,36 +26,6 @@ class SigmoidRange(nn.Module):
 	def forward(self, input: torch.Tensor) -> torch.Tensor:
 		return torch.sigmoid(input) * (self.high - self.low) + self.low 
 
-class ClassificationHead(nn.Module):
-	def __init__(self, num_classes=2, num_rot_classes=6, num_type_classes=2, debug=False):
-		super().__init__()
-		self.debug = debug
-		self.num_classes = num_classes
-		self.num_rot_classes = num_rot_classes
-		self.num_type_classes = num_type_classes
-
-		self.fc1 = nn.Linear(256, 128)
-		self.fc2 = nn.Linear(128, 64)
-		self.fc3 = nn.Linear(64, num_classes)      # 2 classes for binary label	(e.g. astroid, geom_petal)
-		self.fc4 = nn.Linear(64, num_rot_classes)  # 6 classes for rot		(e.g. [-1, π/5, π/4, π/3, π/2, π] so we can encode them just as [0, 5, 4, 3, 2, 1])
-		self.fc5 = nn.Linear(64, num_type_classes) # 2 classes for type		(axis, plane)
-
-		if self.debug:
-			print(f'ClassificationHead.__init__() - num_classes: {num_classes} - num_rot_classes: {num_rot_classes} - num_type_classes: {num_type_classes}')
-
-	def forward(self, x):
-		x = F.relu(self.fc1(x))
-		x = F.dropout(x, p=0.3)
-		x = F.relu(self.fc2(x))
-		x = F.dropout(x, p=0.3)
-		cls = F.softmax(self.fc3(x), dim=1)
-		rot = F.softmax(self.fc4(x), dim=1)
-		typ = F.softmax(self.fc5(x), dim=1)
-
-		if self.debug:
-			print(f'ClassificationHead.forward() - cls: {cls} - rot: {rot} - typ: {typ}')
-		return cls, rot, typ
-
 
 '''
 # YOLOv8 regression head
@@ -120,10 +90,10 @@ class RegressionModel(nn.Module):
 		self.output2 = nn.Conv1d(conv_features_out, self.normal_floats * self.normal_max_rows, 1)
 		'''
 		if pop_floats != -1:
-			self.output  = nn.Conv1d(conv_features_out, self.pop_floats, 1)
+			self.output  = nn.Conv1d(conv_features_out, self.pop_floats, kernel_size=1)
 		else:
-			#self.output  = nn.Conv1d(conv_features_out, self.normal_floats * self.normal_max_rows, 1)
-			self.output  = nn.Conv1d(conv_features_out, self.normal_floats, 1)
+			#self.output  = nn.Conv1d(conv_features_out, self.normal_floats * self.normal_max_rows, kernel_size=1)
+			self.output  = nn.Conv1d(conv_features_out, self.normal_floats, kernel_size=1)
 
 		if self.debug:
 			print(f'RegressionModel.__init__() - pop_floats: {pop_floats} - normal_floats: {normal_floats} - normal_max_rows: {normal_max_rows}')
@@ -209,8 +179,7 @@ class get_model(nn.Module):
 		self.normal_floats   =  3	# normal (nx,ny,nz)
 		self.normal_max_rows = 14	# 14x normals per each input point cloud
 
-		#self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=3 , normal_floats=-1, debug=False)
-		self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=1 , normal_floats=-1, debug=False)
+		self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=3 , normal_floats=-1, debug=False)
 		#self.regr_norm = [RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=True) for i in range(self.normal_max_rows)]
 		self.regr_norm = nn.ModuleList([RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=False) for i in range(self.normal_max_rows)])
 
