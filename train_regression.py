@@ -19,7 +19,6 @@ import argparse
 from pathlib import Path
 from tqdm import tqdm
 
-#from torchsummary import summary
 from torchinfo import summary
 
 from data_utils.ModelNetDataLoader import ModelNetDataLoader
@@ -72,8 +71,6 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=24, help='batch size in training')
     parser.add_argument('--model', default='pointnet_cls', help='model name [default: pointnet_cls]')
     parser.add_argument('--num_classes', default=40, type=int, choices=[1, 8, 10, 40],  help='training on ModelNet10/40')
-    #parser.add_argument('--y_range_min', default=-1.,  type=float, help='min value to pass to SigmoidRange class')
-    #parser.add_argument('--y_range_max', default=-1.,  type=float, help='max value to pass to SigmoidRange class')
     parser.add_argument('--y_range_min', default=-1., nargs='+', type=float, help='min value to pass to SigmoidRange class (can be a list of floats)')
     parser.add_argument('--y_range_max', default=-1., nargs='+', type=float, help='max value to pass to SigmoidRange class (can be a list of floats)')
     parser.add_argument('--gt_columns', default='none', nargs='+', type=str, help='column to use as ground truth (can be a list of strings only with the Symmetry dataset)')
@@ -144,7 +141,6 @@ def test_regression(model, regressor, loader, num_class=1, dataset=None, y_range
 	for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
 
 		if not args.use_cpu:
-			#points, target = points.cuda(), target.cuda()
 			points = points.cuda()
 			criterion = criterion.cuda()
 
@@ -156,10 +152,6 @@ def test_regression(model, regressor, loader, num_class=1, dataset=None, y_range
 				target = target.cuda()
 		elif isinstance(target, list):
 			regressor.list_target_to_cuda_float_tensor(target, cuda=(not args.use_cpu))		# because now target is a list of lists/np.arrays
-			'''
-			for idx,tgt in enumerate(target):
-				target[idx] = tgt.float()
-			'''
 
 		if debug:
 			if isinstance(pred, torch.Tensor):
@@ -185,28 +177,11 @@ def test_regression(model, regressor, loader, num_class=1, dataset=None, y_range
 			assert(pred.shape == target.shape)
 			mse_loss_lst = [(pred - target) ** 2]
 		elif (isinstance(pred, list) or isinstance(pred, tuple)) and (isinstance(target, list) or isinstance(target, tuple)):
-			'''
-			mse_tensor_lst = []
-			for idx,pr in enumerate(pred):
-				log_string(f'[{j}] pred[{idx}]: {pr.shape} - target[{idx}]: {target[idx].shape}')
-				tgt = target[idx].reshape(pr.shape)
-				assert(pr.shape == tgt.shape)
-				mse_tensor_itm = (pr - tgt) ** 2
-				mse_tensor_lst.append(mse_tensor_itm.sum())
-			mse_tensor = torch.stack(mse_tensor_lst)
-			'''
-			#loss = model.get_loss.list_target_loss_impl(pred, target)
 			loss = criterion(pred, target, trans_feat)
 			mse_loss_lst = [loss]
 		else:
 			log_string(f'Unhandled pred/target types: {type(pred)} - {type(target)}')
 
-		'''
-		if debug:
-			log_string(f'[{j}] mse_tensor: {mse_tensor.shape}')
-			log_string(f'[{j}] mse_tensor: {mse_tensor}')
-			log_string(f'[{j}] mse_total : {mse_total.shape}')
-		'''
 		mse_total[j] = mse_loss_lst.sum() if isinstance(mse_loss_lst, torch.Tensor) else sum(mse_loss_lst)
 		if debug:
 			log_string(f'[{j}] mse_total : {mse_total}')
@@ -400,29 +375,8 @@ def main(args):
                 regressor.list_target_to_cuda_float_tensor(target, cuda=(not args.use_cpu))		# because now target is a list of lists/np.arrays
                 if not args.use_cpu:
                     points = points.cuda()
-                '''
-                    for idx,tgt in enumerate(target):		# because now target is a list of lists/np.arrays
-                        print(f'cpu  target[{idx}]: {type(tgt)} -  {tgt}')
-                        target[idx] = torch.tensor(tgt).cuda()
-                        print(f'cuda target[{idx}]: {type(tgt)} -  {tgt}')
-                else:
-                    for idx,tgt in enumerate(target):		# because now target is a list of lists/np.arrays
-                        print(f'cpu  target[{idx}]: {type(tgt)} -  {tgt}')
-                        target[idx] = torch.tensor(tgt)
-                '''
 
                 pred, trans_feat = regressor(points)
-                '''
-                if args.y_range_min == -1. and args.y_range_max == -1.:
-                    loss = criterion(pred, target, trans_feat)
-                    pred_choice = pred.data.max(1)[1]
-                    correct = pred_choice.eq(target.long().data).cpu().sum()
-                    mean_correct.append(correct.item() / float(points.size()[0]))
-                else:
-                    loss = criterion(pred, target.float(), trans_feat)
-                '''
-                #print(f'pred  : {pred} - {type(pred)}')
-                #print(f'target: {target} - {type(target)}')
                 loss = criterion(pred, target, trans_feat)
 
             loss.backward()
