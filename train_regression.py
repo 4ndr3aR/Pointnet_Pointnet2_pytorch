@@ -128,9 +128,10 @@ def test(model, loader, num_class=40):
 
     return instance_acc, class_acc
 
-def test_regression(model, regressor, loader, num_class=1, debug=False):
+def test_regression(model, regressor, loader, num_class=1, dataset=None, y_range=None, debug=False):
 	mse_total = torch.zeros(len(loader))
 	regressor = regressor.eval()
+	criterion = model.get_loss(dataset=dataset, y_range=y_range)
 
 	if debug:
 		log_string(f'type(loader): {type(loader)}')
@@ -145,9 +146,10 @@ def test_regression(model, regressor, loader, num_class=1, debug=False):
 		if not args.use_cpu:
 			#points, target = points.cuda(), target.cuda()
 			points = points.cuda()
+			criterion = criterion.cuda()
 
 		points  = points.transpose(2, 1)
-		pred, _ = regressor(points)
+		pred, trans_feat = regressor(points)
 		if isinstance(target, torch.Tensor):
 			target  = target.float()
 			if not args.use_cpu:
@@ -193,7 +195,8 @@ def test_regression(model, regressor, loader, num_class=1, debug=False):
 				mse_tensor_lst.append(mse_tensor_itm.sum())
 			mse_tensor = torch.stack(mse_tensor_lst)
 			'''
-			loss = model.get_loss.list_target_loss_impl(pred, target)
+			#loss = model.get_loss.list_target_loss_impl(pred, target)
+			loss = criterion(pred, target, trans_feat)
 			mse_loss_lst = [loss]
 		else:
 			log_string(f'Unhandled pred/target types: {type(pred)} - {type(target)}')
@@ -435,7 +438,7 @@ def main(args):
 
         with torch.no_grad():
             if y_range is not None or args.symmetry_dataset or args.curveml_dataset:
-                mse_mean, mse_sum, mse = test_regression(model, regressor.eval(), valDataLoader, num_class=num_class)
+                mse_mean, mse_sum, mse = test_regression(model, regressor.eval(), valDataLoader, num_class=num_class, dataset=dataset, y_range=y_range)
 
                 if (mse < best_mse):
                     best_epoch    = epoch + 1
