@@ -91,6 +91,7 @@ def parse_args():
     parser.add_argument('--symmetry_dataset', action='store_true', default=False, help='use the Symmetry dataset')
     parser.add_argument('--show_one_batch', action='store_true', default=False, help='show one batch before start training')
     parser.add_argument('--only_test_set', action='store_true', default=False, help='only use test set for a very quick run (perfect to see if the model is learning)')
+    parser.add_argument('--wandb', action='store_true', default=False, help='use wandb for logging metrics and progress')
     return parser.parse_args()
 
 
@@ -131,7 +132,7 @@ def test(model, loader, num_class=40):
 def test_regression(model, regressor, loader, num_class=1, dataset=None, y_range=None, debug=False):
 	mse_total = torch.zeros(len(loader))
 	regressor = regressor.eval()
-	criterion = model.get_loss(dataset=dataset, y_range=y_range)
+	criterion = model.get_loss(dataset=dataset, y_range=y_range, debug=debug)
 
 	if debug:
 		log_string(f'type(loader): {type(loader)}')
@@ -293,6 +294,15 @@ def main(args):
 
     log_string(f'trainDataLoader size (in batches): {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
 
+    if args.wandb:
+        import wandb
+        #wandb.init(config=args)
+        # batch_size=5, curveml_dataset=False, decay_rate=0.0001, epoch=200, gpu='0', gt_columns=['cls', 'type', 'popx', 'popy', 'popz', 'nx', 'ny', 'nz', 'rot'], learning_rate=0.05, log_dir='pointnet-nonormal-symmetry-bs5', mnist_dataset=False, model='pointnet_regr', num_classes=1, num_point=1024, only_test_set=True, optimizer='Adam', process_data=False, show_one_batch=False, symmetry_dataset=True, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=-1.0, y_range_min=-1.0
+        wandb.config = {"learning_rate": args.learning_rate, "epochs": args.epoch, "batch_size": args.batch_size, "gt_columns": args.gt_columns, "num_point": args.num_point, "num_classes": args.num_classes, "model": args.model, "optimizer": args.optimizer, "mnist_dataset": args.mnist_dataset, "curveml_dataset": args.curveml_dataset, "symmetry_dataset": args.symmetry_dataset, "only_test_set": args.only_test_set,"y_range_max": args.y_range_max, "y_range_min": args.y_range_min, "logdir": args.log_dir}
+        wandb.init(project=f'pointnet-regression-train-bs{args.batch_size}-lr{args.learning_rate}-numpoint{args.num_point}', config=wandb.config)
+
+
+
     '''MODEL LOADING'''
     num_class = args.num_classes
     model = importlib.import_module(args.model)
@@ -316,7 +326,7 @@ def main(args):
     regressor = model.get_model(num_class, normal_channel=args.use_normals, y_range=y_range)
 
     dataset = 'symmetry' if args.symmetry_dataset else 'curveml' if args.curveml_dataset else 'mnist'
-    criterion = model.get_loss(dataset=dataset, y_range=y_range)
+    criterion = model.get_loss(dataset=dataset, y_range=y_range, debug=True)
     if args.y_range_min == -1. and args.y_range_max == -1.:
         regressor.apply(inplace_relu)
 
@@ -428,6 +438,10 @@ def main(args):
             loss.backward()
             optimizer.step()
             global_step += 1
+
+            if args.wandb:
+                if global_step % 10 == 0:
+                    wandb.log({"loss": loss})
 
         if args.y_range_min == -1. and args.y_range_max == -1.:
             train_instance_acc = np.mean(mean_correct)

@@ -289,7 +289,7 @@ class Symmetry(Dataset):
 			sampling_indices = np.random.choice(points.shape[0], self.max_points - points.shape[0])
 			if debug_verbose:
 				print(f'3. __getitem__() idx: {idx} - {len(sampling_indices) = } - {sampling_indices = }')
-			print(f'{points.shape = } - {type(points) = } - {points = }')
+			#print(f'{points.shape = } - {type(points) = } - {points = }')
 			new_points = points[sampling_indices, : ]
 			points = np.concatenate((points, new_points), axis=0)
 		else:

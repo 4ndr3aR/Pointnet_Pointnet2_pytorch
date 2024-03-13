@@ -139,7 +139,81 @@ class RegressionHead(nn.Module):
 
 		return pop, norm_flat
 
-class RegressionModel(nn.Module):
+
+
+class MLPRegressionHead(nn.Module):
+	def __init__(self, in_dim, hidden_dim=256, out_dim=2048, pop_floats=-1, normal_floats=-1, normal_max_rows=-1, debug=False):
+		super().__init__()
+
+		self.debug = debug
+		self.pop_floats = pop_floats
+		self.normal_floats = normal_floats
+		self.normal_max_rows = normal_max_rows
+
+		if pop_floats != -1:
+			self.name = 'pop'
+		else:
+			self.name = 'norm'
+
+		self.layer1 = nn.Sequential(
+			nn.Linear(in_dim, hidden_dim),
+			nn.BatchNorm1d(hidden_dim),
+			nn.ReLU(inplace=True)
+		)
+		self.layer2 = nn.Sequential(
+			nn.Linear(hidden_dim, hidden_dim),
+			nn.BatchNorm1d(hidden_dim),
+			nn.ReLU(inplace=True)
+		)
+
+		if pop_floats != -1:
+			out_dim = self.pop_floats
+		else:
+			out_dim = self.normal_floats * self.normal_max_rows
+
+		self.layer3 = nn.Sequential(
+			nn.Linear(hidden_dim, out_dim),
+			nn.BatchNorm1d(out_dim)
+		)
+
+		#self.num_layers = 3
+
+		if self.debug:
+			print(f'MLPRegressionHead.__init__() - pop_floats: {pop_floats} - normal_floats: {normal_floats} - normal_max_rows: {normal_max_rows}')
+
+	def set_layers(self, num_layers):
+		self.num_layers = num_layers
+
+	def forward(self, x):
+		'''
+		if self.num_layers == 3:
+			x = self.layer1(x)
+			x = self.layer2(x)
+			x = self.layer3(x)
+		elif self.num_layers == 2:
+			x = self.layer1(x)
+			x = self.layer3(x)
+		else:
+			raise Exception
+		'''
+
+		x   = self.layer1(x)
+		x   = self.layer2(x)
+		out = self.layer3(x)
+
+		if self.debug:
+			print(f'MLPRegressionHead.forward() - {self.name} - out.shape : {out.shape } - out : {out}')
+		'''
+		out = out.permute(1, 0).contiguous()
+		if self.debug:
+			print(f'MLPRegressionHead.forward() - {self.name} - out.shape : {out.shape } - out : {out}')
+		'''
+
+		return out 
+
+
+
+class RegressionModel_(nn.Module):
 	#def __init__(self, num_features_in, conv_features_out=256, pop_floats=3, normal_floats=3, normal_max_rows=14, debug=False):
 	#def __init__(self, num_features_in, conv_features_out=256, pop_floats=-1, normal_floats=-1, normal_max_rows=-1, debug=False):
 	def __init__(self, num_features_in, conv_features_out=256, pop_floats=-1, normal_floats=-1, normal_max_rows=-1, debug=False):
@@ -324,9 +398,12 @@ class get_model(nn.Module):
 		self.regr_norm = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , normal_max_rows=14, debug=False)
 		'''
 		#self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=3 , normal_floats=-1, debug=False)
-		self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=1 , normal_floats=-1, debug=False)
+		#self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=1 , normal_floats=-1, debug=False)
+		self.regr_pop  = MLPRegressionHead(in_dim=256, hidden_dim=256, pop_floats=3, normal_floats=-1, normal_max_rows=-1, debug=False)
+
 		#self.regr_norm = [RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=True) for i in range(self.normal_max_rows)]
-		self.regr_norm = nn.ModuleList([RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=False) for i in range(self.normal_max_rows)])
+		#self.regr_norm = nn.ModuleList([RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=False) for i in range(self.normal_max_rows)])
+		self.regr_norm = MLPRegressionHead(in_dim=256, hidden_dim=256, pop_floats=-1, normal_floats=3, normal_max_rows=14, debug=False)
 
 		'''
 		self.y_range = y_range
@@ -347,10 +424,13 @@ class get_model(nn.Module):
 		#x = self.regr(x)
 		#x = [self.regr[i](x) for i in range(self.pop_floats)]
 		#x_pop, x_norm = self.regr_pop(x), self.regr_norm(x)
-		x_pop  = self.regr_pop(x) 
+		x_pop  = self.regr_pop(x)
+		x_norm = self.regr_norm(x)
+		'''
 		x_norm = []
 		for idx in range(self.normal_max_rows):
 			x_norm.append(self.regr_norm[idx](x))
+		'''
 		'''
 		x = self.fc3(x)
 		if self.y_range is not None:
@@ -377,17 +457,32 @@ class get_model(nn.Module):
 				print(f'cuda target[{idx}]: {type(target[idx])} -  {target[idx]}')
 
 class get_loss(torch.nn.Module):
-	def __init__(self, y_range=None, mat_diff_loss_scale=0.00001, dataset='symmetry', debug=False):
+	def __init__(self, y_range=None, mat_diff_loss_scale=0.001, dataset='symmetry', debug=False):
 		super(get_loss, self).__init__()
 		self.mat_diff_loss_scale = mat_diff_loss_scale
 		self.y_range = y_range
 		self.dataset = dataset
 		self.debug   = debug
 
+		self.batch_counter = 0
+
 	def forward(self, pred, target, trans_feat):
+
+		self.batch_counter += 1
+
+
+		#print(f'get_loss.forward() - self.debug: {self.debug} - self.batch_counter: {self.batch_counter}')
+		if self.debug and self.batch_counter % 100 == 0:
+			print(f'get_loss.forward() - len(pred): {len(pred)} - len(target): {len(target)}')
+			print(f'get_loss.forward() - pred[0].shape: {pred[0].shape} - target[0].shape: {target[0].shape}')
 
 		pr  = pred[0][0]
 		tgt = target[0][0]#.reshape(pr.shape)
+
+		if self.debug and self.batch_counter % 100 == 0:
+			print(f'get_loss.forward() - pr.shape : {pr.shape}')
+			print(f'get_loss.forward() - tgt.shape: {tgt.shape}')
+
 		loss= F.mse_loss(pr, tgt.float())
 
 		'''
@@ -401,16 +496,24 @@ class get_loss(torch.nn.Module):
 
 		#loss = (pred[0] - target[0]) ** 2
 		#loss = F.mse_loss(pred[0], target[0].float())
-		print(f'get_loss.forward() - pred[0].shape: {pred[0].shape}')
-		print(f'get_loss.forward() - target[0].shape: {target[0].shape}')
-		print(f'get_loss.forward() - loss.shape: {loss.shape}')
-		print(f'get_loss.forward() - pred[0]: {pred[0]}')
-		print(f'get_loss.forward() - target[0]: {target[0]}')
-		print(f'get_loss.forward() - loss: {loss}')
+		if self.debug and self.batch_counter % 100 == 0:
+			print(f'get_loss.forward() - pred[0].shape: {pred[0].shape}')
+			print(f'get_loss.forward() - target[0].shape: {target[0].shape}')
+			print(f'get_loss.forward() - loss.shape: {loss.shape}')
+			print(f'get_loss.forward() - pred[0]: {pred[0]}')
+			print(f'get_loss.forward() - target[0]: {target[0]}')
+			print(f'get_loss.forward() - loss: {loss}')
+
 		mat_diff_loss = feature_transform_regularizer(trans_feat)
-		print(f'get_loss.forward() - mat_diff_loss: {mat_diff_loss}')
+
+		if self.debug and self.batch_counter % 100 == 0:
+			print(f'get_loss.forward() - mat_diff_loss: {mat_diff_loss}')
+
 		total_loss = loss + mat_diff_loss * self.mat_diff_loss_scale
-		print(f'get_loss.forward() - total_loss: {total_loss}')
+
+		if self.debug and self.batch_counter % 100 == 0:
+			print(f'get_loss.forward() - total_loss: {total_loss}')
+
 		return total_loss
 		#return loss
 
