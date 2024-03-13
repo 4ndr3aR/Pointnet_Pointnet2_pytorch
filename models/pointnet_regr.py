@@ -158,12 +158,27 @@ class MLPRegressionHead(nn.Module):
 		self.layer1 = nn.Sequential(
 			nn.Linear(in_dim, hidden_dim),
 			nn.BatchNorm1d(hidden_dim),
-			nn.ReLU(inplace=True)
+			#nn.ReLU(inplace=True)
 		)
 		self.layer2 = nn.Sequential(
-			nn.Linear(hidden_dim, hidden_dim),
+			nn.Linear(hidden_dim, hidden_dim//2),
+			nn.BatchNorm1d(hidden_dim//2),
+			#nn.ReLU(inplace=True)
+		)
+		self.layer3 = nn.Sequential(
+			nn.Linear(hidden_dim//2, hidden_dim//4),
+			nn.BatchNorm1d(hidden_dim//4),
+			#nn.ReLU(inplace=True)
+		)
+		self.layer4 = nn.Sequential(
+			nn.Linear(hidden_dim//4, hidden_dim//2),
+			nn.BatchNorm1d(hidden_dim//2),
+			#nn.ReLU(inplace=True)
+		)
+		self.layer5 = nn.Sequential(
+			nn.Linear(hidden_dim//2, hidden_dim),
 			nn.BatchNorm1d(hidden_dim),
-			nn.ReLU(inplace=True)
+			#nn.ReLU(inplace=True)
 		)
 
 		if pop_floats != -1:
@@ -171,7 +186,7 @@ class MLPRegressionHead(nn.Module):
 		else:
 			out_dim = self.normal_floats * self.normal_max_rows
 
-		self.layer3 = nn.Sequential(
+		self.layer_out = nn.Sequential(
 			nn.Linear(hidden_dim, out_dim),
 			nn.BatchNorm1d(out_dim)
 		)
@@ -199,7 +214,10 @@ class MLPRegressionHead(nn.Module):
 
 		x   = self.layer1(x)
 		x   = self.layer2(x)
-		out = self.layer3(x)
+		x   = self.layer3(x)
+		x   = self.layer4(x)
+		x   = self.layer5(x)
+		out = self.layer_out(x)
 
 		if self.debug:
 			print(f'MLPRegressionHead.forward() - {self.name} - out.shape : {out.shape } - out : {out}')
@@ -403,7 +421,7 @@ class get_model(nn.Module):
 
 		#self.regr_norm = [RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=True) for i in range(self.normal_max_rows)]
 		#self.regr_norm = nn.ModuleList([RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=False) for i in range(self.normal_max_rows)])
-		self.regr_norm = MLPRegressionHead(in_dim=256, hidden_dim=256, pop_floats=-1, normal_floats=3, normal_max_rows=14, debug=False)
+		#self.regr_norm = MLPRegressionHead(in_dim=256, hidden_dim=256, pop_floats=-1, normal_floats=3, normal_max_rows=14, debug=False)
 
 		'''
 		self.y_range = y_range
@@ -425,7 +443,7 @@ class get_model(nn.Module):
 		#x = [self.regr[i](x) for i in range(self.pop_floats)]
 		#x_pop, x_norm = self.regr_pop(x), self.regr_norm(x)
 		x_pop  = self.regr_pop(x)
-		x_norm = self.regr_norm(x)
+		#x_norm = self.regr_norm(x)
 		'''
 		x_norm = []
 		for idx in range(self.normal_max_rows):
@@ -441,10 +459,12 @@ class get_model(nn.Module):
 
 
 		if self.debug:
-			print(f'get_model.forward() - Returning {type(x_pop)} - {type(x_norm)}')
+			#print(f'get_model.forward() - Returning {type(x_pop)} - {type(x_norm)}')
+			print(f'get_model.forward() - Returning {type(x_pop)}')
 
 		#return x, trans_feat
-		return [x_pop, x_norm], trans_feat
+		#return [x_pop, x_norm], trans_feat
+		return [x_pop, None], trans_feat
 
 	def list_target_to_cuda_float_tensor(self, target, cuda=True, debug=False):
 		for idx,tgt in enumerate(target):		# because now target is a list of lists/np.arrays
@@ -457,7 +477,7 @@ class get_model(nn.Module):
 				print(f'cuda target[{idx}]: {type(target[idx])} -  {target[idx]}')
 
 class get_loss(torch.nn.Module):
-	def __init__(self, y_range=None, mat_diff_loss_scale=0.001, dataset='symmetry', debug=False):
+	def __init__(self, y_range=None, mat_diff_loss_scale=0.000001, dataset='symmetry', debug=False):
 		super(get_loss, self).__init__()
 		self.mat_diff_loss_scale = mat_diff_loss_scale
 		self.y_range = y_range
@@ -514,7 +534,7 @@ class get_loss(torch.nn.Module):
 		if self.debug and self.batch_counter % 100 == 0:
 			print(f'get_loss.forward() - total_loss: {total_loss}')
 
-		return total_loss
+		return total_loss, loss, mat_diff_loss * self.mat_diff_loss_scale
 		#return loss
 
 

@@ -27,6 +27,8 @@ from collections import Counter			# just to subtract lists of strings
 
 from joblib import Parallel, delayed
 
+#import threading
+
 import pandas as pd
 pd.options.display.precision = 3
 
@@ -200,12 +202,13 @@ class Symmetry(Dataset):
 	'''
 
 	NUM_CLASSIFICATION_CLASSES = 2
-	MAX_POINTS = 5000
+	MAX_POINTS = 1024
 	MAX_GT_ROWS = 14			# Max number of symmetries per figure. Figures with GT less than this number of symmetries will be -1-padded
 	MIN_GRANULARITY = 0.000001		# Minimum range for floats in GT. If a float is smaller than this, it will be zeroed
 
 	#LABELS = ['cassinian-oval', 'cissoid', 'citrus', 'egg', 'geom-petal', 'hypocycloid', 'mouth', 'spiral']
-	LABELS = ['astroid', 'geometric_petal']
+	#LABELS = ['astroid', 'geometric_petal']
+	LABELS = ['citrus','m_convexities', 'geometric_petal', 'lemniscate', 'egg_keplero', 'mouth_curve', 'astroid','revolution']
 
 	def __init__(self, path, partition, extension='.xz', gt_columns=None,
 			max_points=MAX_POINTS, labels=LABELS, max_gt_rows=MAX_GT_ROWS, min_granularity=MIN_GRANULARITY,
@@ -683,18 +686,20 @@ def read_and_save_dataset_partitions(dataset_path, output_path='./', parallel=Fa
 	del train_dataset
 	return #train_dataset, valid_dataset, test_dataset
 
-def create_symmetry_dataloaders(symmetry_path, bs, extension='.xz', gt_columns=None, only_test_set=False, valid_and_test_sets=False):
+def create_symmetry_dataloaders(symmetry_path, bs, extension='.xz', gt_columns=None, num_points=1024, only_test_set=False, valid_and_test_sets=False):
 	train_dataset,    val_dataset,    test_dataset    = None, None, None
 	train_dataloader, val_dataloader, test_dataloader = None, None, None
 
+	print(f'create_symmetry_dataloaders() is loading dataset from: {symmetry_path}')
+
 	print('.', end='', flush=True)
-	test_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, partition='test', extension=extension)
+	test_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, max_points=num_points, partition='test', extension=extension)
 
 	if not only_test_set:
 		print('.', end='', flush=True)
-		val_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, partition='valid', extension=extension)
+		val_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, max_points=num_points, partition='valid', extension=extension)
 		print('.', end='', flush=True)
-		train_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, partition='train', extension=extension)		# keep this one as the last because it's pretty slow
+		train_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, max_points=num_points, partition='train', extension=extension)		# keep this one as the last because it's pretty slow
 	else:
 		print(f'Warning: using only test set for dataloaders...')
 
@@ -744,10 +749,12 @@ if __name__ == '__main__':
 
 	if test_write or test_dist_write:
 		print(f'Testing the read_and_save_dataset_partitions() function...')
-		dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
+		#dataset_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/symmetries-dataset-astroid-geom_petal-10k')
 		#dataset_path = Path('/mnt/data/datasets/symmetry-datasets/symmetries-dataset-astroid-geom_petal-1k')
-		#dataset_path = Path('/tmp/symmetries-dataset-split')								# 100k this time
-		output_path  = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz')		# need more space
+		dataset_path = Path('/tmp/symmetries-dataset-split')
+		#output_path  = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz')
+		output_path  = Path('/tmp/symmetries-dataset-split/gz')
+		Path(output_path).mkdir(parents=True, exist_ok=True)
 		read_and_save_dataset_partitions(dataset_path, output_path=output_path, parallel=test_dist_write)
 		print(f'read_and_save_dataset_partitions() complete')
 		sys.exit()

@@ -79,10 +79,11 @@ def parse_args():
     parser.add_argument('--gt_columns', default='none', nargs='+', type=str, help='column to use as ground truth (can be a list of strings only with the Symmetry dataset)')
     parser.add_argument('--epoch', default=200, type=int, help='number of epoch in training')
     parser.add_argument('--learning_rate', default=0.001, type=float, help='learning rate in training')
-    parser.add_argument('--num_point', type=int, default=1024, help='Point Number')
+    parser.add_argument('--num_points', type=int, default=1024, help='Max number of points in point clouds')
     parser.add_argument('--optimizer', type=str, default='Adam', help='optimizer for training')
     parser.add_argument('--log_dir', type=str, default=None, help='experiment root')
     parser.add_argument('--decay_rate', type=float, default=1e-4, help='decay rate')
+    parser.add_argument('--mat_diff_loss_scale', type=float, default=1e-3, help='Regularization parameter == torch.mean(torch.norm(torch.bmm(trans, trans.transpose(2, 1)) - I)), i.e. the (batch) matrix multiplication between trans_feat matrix coming from the affine transform mini-network and its transpose minus the identity matrix. trans_feat, in turn, is the output of the affine transform mini-network (batch) matrix multiplied with the input matrix.')
     parser.add_argument('--use_normals', action='store_true', default=False, help='use normals')
     parser.add_argument('--process_data', action='store_true', default=False, help='save data offline')
     parser.add_argument('--use_uniform_sample', action='store_true', default=False, help='use uniform sampiling')
@@ -92,6 +93,7 @@ def parse_args():
     parser.add_argument('--show_one_batch', action='store_true', default=False, help='show one batch before start training')
     parser.add_argument('--only_test_set', action='store_true', default=False, help='only use test set for a very quick run (perfect to see if the model is learning)')
     parser.add_argument('--wandb', action='store_true', default=False, help='use wandb for logging metrics and progress')
+    parser.add_argument('--dataset_path', type=str, default='', help='path to the dataset to be loaded')
     return parser.parse_args()
 
 
@@ -132,7 +134,7 @@ def test(model, loader, num_class=40):
 def test_regression(model, regressor, loader, num_class=1, dataset=None, y_range=None, debug=False):
 	mse_total = torch.zeros(len(loader))
 	regressor = regressor.eval()
-	criterion = model.get_loss(dataset=dataset, y_range=y_range, debug=debug)
+	criterion = model.get_loss(dataset=dataset, y_range=y_range, mat_diff_loss_scale=args.mat_diff_loss_scale, debug=debug)
 
 	if debug:
 		log_string(f'type(loader): {type(loader)}')
@@ -197,7 +199,7 @@ def test_regression(model, regressor, loader, num_class=1, dataset=None, y_range
 			mse_tensor = torch.stack(mse_tensor_lst)
 			'''
 			#loss = model.get_loss.list_target_loss_impl(pred, target)
-			loss = criterion(pred, target, trans_feat)
+			loss, mse_loss, mat_diff_loss = criterion(pred, target, trans_feat)
 			mse_loss_lst = [loss]
 		else:
 			log_string(f'Unhandled pred/target types: {type(pred)} - {type(target)}')
@@ -279,18 +281,25 @@ def main(args):
         trainDataLoader, valDataLoader, testDataLoader = create_3dmnist_dataloaders(bs=args.batch_size)
     elif args.curveml_dataset:
         log_string('Loading the CurveML dataset...')
-        curveml_path = Path('./data/CurveML')
+        if args.dataset_path != '':
+            curveml_path = Path(args.dataset_path)
+        else:
+            curveml_path = Path('./data/CurveML')
         gt_columns = args.gt_columns if args.gt_columns is not None else 'label'
         log_string(f'Using column {gt_columns} as ground truth')
         trainDataLoader, valDataLoader, testDataLoader = create_curveml_dataloaders(curveml_path, gt_columns=gt_columns, bs=args.batch_size, only_test_set=args.only_test_set)
     elif args.symmetry_dataset:
         log_string('Loading the Symmetry dataset...')
-        #symmetry_path = Path('./data/Symmetry')
-        symmetry_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz/symmetries-dataset-astroid-geom_petal-100k')
-        #symmetry_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz/symmetries-dataset-astroid-geom_petal-10k')
+        if args.dataset_path != '':
+            symmetry_path = Path(args.dataset_path)
+        else:
+            #symmetry_path = Path('./data/Symmetry')
+            #symmetry_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz/symmetries-dataset-astroid-geom_petal-100k')
+            #symmetry_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz/symmetries-dataset-astroid-geom_petal-10k')
+            symmetry_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz/symmetries-dataset-lemniscate-clean-10k')
         gt_columns = args.gt_columns if args.gt_columns is not None else 'label'
         log_string(f'Using column {gt_columns} as ground truth')
-        trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_columns=gt_columns, bs=args.batch_size, only_test_set=args.only_test_set, extension='.gz')
+        trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_columns=gt_columns, bs=args.batch_size, num_points=args.num_points, only_test_set=args.only_test_set, extension='.gz')
 
     log_string(f'trainDataLoader size (in batches): {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
 
@@ -298,8 +307,8 @@ def main(args):
         import wandb
         #wandb.init(config=args)
         # batch_size=5, curveml_dataset=False, decay_rate=0.0001, epoch=200, gpu='0', gt_columns=['cls', 'type', 'popx', 'popy', 'popz', 'nx', 'ny', 'nz', 'rot'], learning_rate=0.05, log_dir='pointnet-nonormal-symmetry-bs5', mnist_dataset=False, model='pointnet_regr', num_classes=1, num_point=1024, only_test_set=True, optimizer='Adam', process_data=False, show_one_batch=False, symmetry_dataset=True, use_cpu=False, use_normals=False, use_uniform_sample=False, y_range_max=-1.0, y_range_min=-1.0
-        wandb.config = {"learning_rate": args.learning_rate, "epochs": args.epoch, "batch_size": args.batch_size, "gt_columns": args.gt_columns, "num_point": args.num_point, "num_classes": args.num_classes, "model": args.model, "optimizer": args.optimizer, "mnist_dataset": args.mnist_dataset, "curveml_dataset": args.curveml_dataset, "symmetry_dataset": args.symmetry_dataset, "only_test_set": args.only_test_set,"y_range_max": args.y_range_max, "y_range_min": args.y_range_min, "logdir": args.log_dir}
-        wandb.init(project=f'pointnet-regression-train-bs{args.batch_size}-lr{args.learning_rate}-numpoint{args.num_point}', config=wandb.config)
+        wandb.config = {"learning_rate": args.learning_rate, "epochs": args.epoch, "batch_size": args.batch_size, "gt_columns": args.gt_columns, "num_points": args.num_points, "num_classes": args.num_classes, "model": args.model, "optimizer": args.optimizer, "mnist_dataset": args.mnist_dataset, "curveml_dataset": args.curveml_dataset, "symmetry_dataset": args.symmetry_dataset, "only_test_set": args.only_test_set,"y_range_max": args.y_range_max, "y_range_min": args.y_range_min, "logdir": args.log_dir}
+        wandb.init(project=f'pointnet-regression-train-bs{args.batch_size}-lr{args.learning_rate}-numpoints{args.num_points}', config=wandb.config)
 
 
 
@@ -326,7 +335,7 @@ def main(args):
     regressor = model.get_model(num_class, normal_channel=args.use_normals, y_range=y_range)
 
     dataset = 'symmetry' if args.symmetry_dataset else 'curveml' if args.curveml_dataset else 'mnist'
-    criterion = model.get_loss(dataset=dataset, y_range=y_range, debug=True)
+    criterion = model.get_loss(dataset=dataset, y_range=y_range, mat_diff_loss_scale=args.mat_diff_loss_scale, debug=True)
     if args.y_range_min == -1. and args.y_range_max == -1.:
         regressor.apply(inplace_relu)
 
@@ -396,16 +405,7 @@ def main(args):
 
             if not args.symmetry_dataset:
                 if not args.use_cpu:
-                    points, target = points.cuda(), torch.tensor(target).cuda()
-
-                pred, trans_feat = regressor(points)
-                if args.y_range_min == -1. and args.y_range_max == -1.:
-                    loss = criterion(pred, target.long(), trans_feat)
-                    pred_choice = pred.data.max(1)[1]
-                    correct = pred_choice.eq(target.long().data).cpu().sum()
-                    mean_correct.append(correct.item() / float(points.size()[0]))
-                else:
-                    loss = criterion(pred, target.float(), trans_feat)
+                    points, target = points.cuda(), torch.tensor(target).cuda().float()
             else:
                 regressor.list_target_to_cuda_float_tensor(target, cuda=(not args.use_cpu))		# because now target is a list of lists/np.arrays
                 if not args.use_cpu:
@@ -421,7 +421,6 @@ def main(args):
                         target[idx] = torch.tensor(tgt)
                 '''
 
-                pred, trans_feat = regressor(points)
                 '''
                 if args.y_range_min == -1. and args.y_range_max == -1.:
                     loss = criterion(pred, target, trans_feat)
@@ -433,7 +432,9 @@ def main(args):
                 '''
                 #print(f'pred  : {pred} - {type(pred)}')
                 #print(f'target: {target} - {type(target)}')
-                loss = criterion(pred, target, trans_feat)
+
+            pred, trans_feat = regressor(points)
+            loss, mse_loss, mat_diff_loss = criterion(pred, target, trans_feat)
 
             loss.backward()
             optimizer.step()
@@ -441,7 +442,7 @@ def main(args):
 
             if args.wandb:
                 if global_step % 10 == 0:
-                    wandb.log({"loss": loss})
+                    wandb.log({"loss": loss, "mse_loss": mse_loss, "mat_diff_loss": mat_diff_loss})
 
         if args.y_range_min == -1. and args.y_range_max == -1.:
             train_instance_acc = np.mean(mean_correct)
