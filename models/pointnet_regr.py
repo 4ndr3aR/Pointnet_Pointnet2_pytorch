@@ -199,9 +199,9 @@ class MLPRegressionHead(nn.Module):
     (8): Linear(in_features=512, out_features=37, bias=True)			
 		'''
 		self.layer_fastai = nn.Sequential(
-			nn.BatchNorm1d(hidden_dim),
+			nn.BatchNorm1d(in_dim),
 			nn.Dropout(p=0.25),
-			nn.Linear(hidden_dim, hidden_dim//2),
+			nn.Linear(in_dim, in_dim//2),
 			nn.ReLU(inplace=True)
 		)
 
@@ -218,9 +218,9 @@ class MLPRegressionHead(nn.Module):
 		'''
 
 		self.layer_fastaiout = nn.Sequential(
-			nn.BatchNorm1d(hidden_dim//2),
+			nn.BatchNorm1d(in_dim//2),
 			nn.Dropout(p=0.5),
-			nn.Linear(hidden_dim//2, out_dim),
+			nn.Linear(in_dim//2, out_dim),
 		)
 
 		#self.num_layers = 3
@@ -431,13 +431,57 @@ class get_model(nn.Module):
 			channel = 3
 
 		self.feat = PointNetEncoder(global_feat=True, feature_transform=True, channel=channel)
+		'''
 		self.fc1 = nn.Linear(1024, 512)
 		self.fc2 = nn.Linear(512, 256)
 		#self.fc3 = nn.Linear(256, out_features)
 		self.dropout = nn.Dropout(p=0.4)
 		self.bn1 = nn.BatchNorm1d(512)
 		self.bn2 = nn.BatchNorm1d(256)
+		'''
+		'''
+		self.conv1 = torch.nn.Conv1d(1024, 512, 1)
+		self.conv2 = torch.nn.Conv1d(512 , 256, 1)
+		self.conv3 = torch.nn.Conv1d(256 , 128, 1)
+		self.conv4 = torch.nn.Conv1d(128 ,  64, 1)
+		self.bn1   = nn.BatchNorm1d(1024)
+		self.bn2   = nn.BatchNorm1d(512)
+		self.bn3   = nn.BatchNorm1d(256)
+		self.bn4   = nn.BatchNorm1d(128)
+		self.dout1 = nn.Dropout(p=0.1),
+		self.dout2 = nn.Dropout(p=0.1),
+		self.dout3 = nn.Dropout(p=0.1),
+		self.dout4 = nn.Dropout(p=0.1),
+		'''
 
+		dim = 1024
+		self.bnconv1 = nn.Sequential(
+			nn.BatchNorm1d(dim),
+			nn.Dropout(p=0.1),
+			nn.Linear(dim, dim//2),
+			nn.ReLU(inplace=True)
+		)
+		dim = 512
+		self.bnconv2 = nn.Sequential(
+			nn.BatchNorm1d(dim),
+			nn.Dropout(p=0.1),
+			nn.Linear(dim, dim//2),
+			nn.ReLU(inplace=True)
+		)
+		dim = 256
+		self.bnconv3 = nn.Sequential(
+			nn.BatchNorm1d(dim),
+			nn.Dropout(p=0.1),
+			nn.Linear(dim, dim//2),
+			nn.ReLU(inplace=True)
+		)
+		dim = 128
+		self.bnconv4 = nn.Sequential(
+			nn.BatchNorm1d(dim),
+			nn.Dropout(p=0.1),
+			nn.Linear(dim, dim//2),
+			nn.ReLU(inplace=True)
+		)
 
 		self.pop_floats	     =  3	# point on plane coordinates (x,y,z)
 		self.normal_floats   =  3	# normal (nx,ny,nz)
@@ -453,7 +497,9 @@ class get_model(nn.Module):
 		'''
 		#self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=3 , normal_floats=-1, debug=False)
 		#self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=1 , normal_floats=-1, debug=False)
-		self.regr_pop  = MLPRegressionHead(in_dim=256, hidden_dim=256, pop_floats=3, normal_floats=-1, normal_max_rows=-1, debug=False)
+		#self.regr_pop  = nn.ModuleList([MLPRegressionHead(in_dim=256, hidden_dim=256, pop_floats=1, normal_floats=-1, normal_max_rows=-1, debug=False) for i in range(self.pop_floats)])
+		#self.regr_pop  = MLPRegressionHead(in_dim=256, hidden_dim=256, pop_floats=3, normal_floats=-1, normal_max_rows=-1, debug=False)
+		self.regr_pop  = MLPRegressionHead(in_dim=64, hidden_dim=256, pop_floats=3, normal_floats=-1, normal_max_rows=-1, debug=False)
 
 		#self.regr_norm = [RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=True) for i in range(self.normal_max_rows)]
 		#self.regr_norm = nn.ModuleList([RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=False) for i in range(self.normal_max_rows)])
@@ -469,9 +515,17 @@ class get_model(nn.Module):
 		'''
 
 	def forward(self, x):
+		if self.debug:
+			print(f'get_model.forward() {x.shape = }')
 		x, trans, trans_feat = self.feat(x)
+		'''
 		x = F.relu(self.bn1(self.fc1(x)))
 		x = F.relu(self.bn2(self.dropout(self.fc2(x))))
+		'''
+		x = self.bnconv1(x)
+		x = self.bnconv2(x)
+		x = self.bnconv3(x)
+		x = self.bnconv4(x)
 
 		if self.debug:
 			print(f'get_model.forward() {x.shape = }')
@@ -480,6 +534,14 @@ class get_model(nn.Module):
 		#x_pop, x_norm = self.regr_pop(x), self.regr_norm(x)
 		x_pop  = self.regr_pop(x)
 		#x_norm = self.regr_norm(x)
+		'''
+		x_pop = []
+		for idx in range(self.pop_floats):
+			x_pop.append(self.regr_pop[idx](x))
+		x_pop = torch.cat(x_pop, dim=1)
+		'''
+		if self.debug:
+			print(f'get_model.forward() - x_pop: {type(x_pop)} - x_pop: {x_pop}')
 		'''
 		x_norm = []
 		for idx in range(self.normal_max_rows):

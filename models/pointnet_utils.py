@@ -99,6 +99,7 @@ class PointNetEncoder(nn.Module):
         self.feature_transform = feature_transform
         if self.feature_transform:
             self.fstn = STNkd(k=64)
+        #self.counter = 0
 
     def forward(self, x):
         #print(f'x: {x.shape} - {type(x)} - {x.size()}')
@@ -125,7 +126,12 @@ class PointNetEncoder(nn.Module):
         pointfeat = x
         x = F.relu(self.bn2(self.conv2(x)))
         x = self.bn3(self.conv3(x))
+        #self.counter += 1
+        #if self.counter % 100 == 0:
+        #    print(f'BEFORE x: {x.shape} - {type(x)} - {x.size()} - {x}')
         x = torch.max(x, 2, keepdim=True)[0]
+        #if self.counter % 100 == 0:
+        #    print(f'AFTER x: {x.shape} - {type(x)} - {x.size()} - {x}')
         x = x.view(-1, 1024)
         if self.global_feat:
             return x, trans, trans_feat
