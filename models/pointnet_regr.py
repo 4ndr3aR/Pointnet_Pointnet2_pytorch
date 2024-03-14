@@ -155,40 +155,72 @@ class MLPRegressionHead(nn.Module):
 		else:
 			self.name = 'norm'
 
+		'''
 		self.layer1 = nn.Sequential(
 			nn.Linear(in_dim, hidden_dim),
 			nn.BatchNorm1d(hidden_dim),
-			#nn.ReLU(inplace=True)
+			nn.Dropout(p=0.1),
+			nn.ReLU(inplace=True)
 		)
 		self.layer2 = nn.Sequential(
 			nn.Linear(hidden_dim, hidden_dim//2),
 			nn.BatchNorm1d(hidden_dim//2),
-			#nn.ReLU(inplace=True)
+			nn.Dropout(p=0.1),
+			nn.ReLU(inplace=True)
 		)
 		self.layer3 = nn.Sequential(
 			nn.Linear(hidden_dim//2, hidden_dim//4),
 			nn.BatchNorm1d(hidden_dim//4),
-			#nn.ReLU(inplace=True)
+			nn.Dropout(p=0.1),
+			nn.ReLU(inplace=True)
 		)
 		self.layer4 = nn.Sequential(
 			nn.Linear(hidden_dim//4, hidden_dim//2),
 			nn.BatchNorm1d(hidden_dim//2),
-			#nn.ReLU(inplace=True)
+			nn.Dropout(p=0.1),
+			nn.ReLU(inplace=True)
 		)
 		self.layer5 = nn.Sequential(
 			nn.Linear(hidden_dim//2, hidden_dim),
 			nn.BatchNorm1d(hidden_dim),
-			#nn.ReLU(inplace=True)
+			nn.Dropout(p=0.1),
+			nn.ReLU(inplace=True)
+		)
+		'''
+
+
+		'''
+    (2): BatchNorm1d(1024, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (3): Dropout(p=0.25)
+    (4): Linear(in_features=1024, out_features=512, bias=True)
+    (5): ReLU(inplace)
+    (6): BatchNorm1d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (7): Dropout(p=0.5)
+    (8): Linear(in_features=512, out_features=37, bias=True)			
+		'''
+		self.layer_fastai = nn.Sequential(
+			nn.BatchNorm1d(hidden_dim),
+			nn.Dropout(p=0.25),
+			nn.Linear(hidden_dim, hidden_dim//2),
+			nn.ReLU(inplace=True)
 		)
 
 		if pop_floats != -1:
 			out_dim = self.pop_floats
 		else:
 			out_dim = self.normal_floats * self.normal_max_rows
-
+		'''
 		self.layer_out = nn.Sequential(
+			nn.Dropout(p=0.1),
 			nn.Linear(hidden_dim, out_dim),
 			nn.BatchNorm1d(out_dim)
+		)
+		'''
+
+		self.layer_fastaiout = nn.Sequential(
+			nn.BatchNorm1d(hidden_dim//2),
+			nn.Dropout(p=0.5),
+			nn.Linear(hidden_dim//2, out_dim),
 		)
 
 		#self.num_layers = 3
@@ -212,12 +244,16 @@ class MLPRegressionHead(nn.Module):
 			raise Exception
 		'''
 
+		'''
 		x   = self.layer1(x)
 		x   = self.layer2(x)
 		x   = self.layer3(x)
 		x   = self.layer4(x)
 		x   = self.layer5(x)
 		out = self.layer_out(x)
+		'''
+		x   = self.layer_fastai(x)
+		out = self.layer_fastaiout(x)
 
 		if self.debug:
 			print(f'MLPRegressionHead.forward() - {self.name} - out.shape : {out.shape } - out : {out}')
