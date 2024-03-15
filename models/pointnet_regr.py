@@ -200,7 +200,7 @@ class MLPRegressionHead(nn.Module):
 		'''
 		self.layer_fastai = nn.Sequential(
 			nn.BatchNorm1d(in_dim),
-			nn.Dropout(p=0.25),
+			#nn.Dropout(p=0.25),
 			nn.Linear(in_dim, in_dim//2),
 			nn.ReLU(inplace=True)
 		)
@@ -219,7 +219,7 @@ class MLPRegressionHead(nn.Module):
 
 		self.layer_fastaiout = nn.Sequential(
 			nn.BatchNorm1d(in_dim//2),
-			nn.Dropout(p=0.5),
+			#nn.Dropout(p=0.5),
 			nn.Linear(in_dim//2, out_dim),
 		)
 
@@ -457,28 +457,28 @@ class get_model(nn.Module):
 		dim = 1024
 		self.bnconv1 = nn.Sequential(
 			nn.BatchNorm1d(dim),
-			nn.Dropout(p=0.1),
+			#nn.Dropout(p=0.1),
 			nn.Linear(dim, dim//2),
 			nn.ReLU(inplace=True)
 		)
 		dim = 512
 		self.bnconv2 = nn.Sequential(
 			nn.BatchNorm1d(dim),
-			nn.Dropout(p=0.1),
+			#nn.Dropout(p=0.1),
 			nn.Linear(dim, dim//2),
 			nn.ReLU(inplace=True)
 		)
 		dim = 256
 		self.bnconv3 = nn.Sequential(
 			nn.BatchNorm1d(dim),
-			nn.Dropout(p=0.1),
+			#nn.Dropout(p=0.1),
 			nn.Linear(dim, dim//2),
 			nn.ReLU(inplace=True)
 		)
 		dim = 128
 		self.bnconv4 = nn.Sequential(
 			nn.BatchNorm1d(dim),
-			nn.Dropout(p=0.1),
+			#nn.Dropout(p=0.1),
 			nn.Linear(dim, dim//2),
 			nn.ReLU(inplace=True)
 		)
