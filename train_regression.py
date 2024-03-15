@@ -396,7 +396,7 @@ def main(args):
             optimizer.zero_grad()
 
             points = points.data.numpy()
-            if True: #not args.symmetry_dataset and not args.curveml_dataset:
+            if not args.symmetry_dataset and not args.curveml_dataset:
                 points = provider.random_point_dropout(points)
                 points[:, :, 0:3] = provider.random_scale_point_cloud(points[:, :, 0:3])
                 points[:, :, 0:3] = provider.shift_point_cloud(points[:, :, 0:3])

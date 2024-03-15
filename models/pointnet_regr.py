@@ -499,7 +499,8 @@ class get_model(nn.Module):
 		#self.regr_pop  = RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=1 , normal_floats=-1, debug=False)
 		#self.regr_pop  = nn.ModuleList([MLPRegressionHead(in_dim=256, hidden_dim=256, pop_floats=1, normal_floats=-1, normal_max_rows=-1, debug=False) for i in range(self.pop_floats)])
 		#self.regr_pop  = MLPRegressionHead(in_dim=256, hidden_dim=256, pop_floats=3, normal_floats=-1, normal_max_rows=-1, debug=False)
-		self.regr_pop  = MLPRegressionHead(in_dim=64, hidden_dim=256, pop_floats=3, normal_floats=-1, normal_max_rows=-1, debug=False)
+		#self.regr_pop  = MLPRegressionHead(in_dim=64, hidden_dim=256, pop_floats=3, normal_floats=-1, normal_max_rows=-1, debug=False)
+		self.regr_pop  = nn.ModuleList([MLPRegressionHead(in_dim=64, hidden_dim=256, pop_floats=1, normal_floats=-1, normal_max_rows=-1, debug=False) for i in range(self.pop_floats)])
 
 		#self.regr_norm = [RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=True) for i in range(self.normal_max_rows)]
 		#self.regr_norm = nn.ModuleList([RegressionModel(num_features_in=256, conv_features_out=32, pop_floats=-1, normal_floats=3 , debug=False) for i in range(self.normal_max_rows)])
@@ -532,14 +533,14 @@ class get_model(nn.Module):
 		#x = self.regr(x)
 		#x = [self.regr[i](x) for i in range(self.pop_floats)]
 		#x_pop, x_norm = self.regr_pop(x), self.regr_norm(x)
-		x_pop  = self.regr_pop(x)
+		#x_pop  = self.regr_pop(x)
 		#x_norm = self.regr_norm(x)
-		'''
+
 		x_pop = []
 		for idx in range(self.pop_floats):
 			x_pop.append(self.regr_pop[idx](x))
 		x_pop = torch.cat(x_pop, dim=1)
-		'''
+
 		if self.debug:
 			print(f'get_model.forward() - x_pop: {type(x_pop)} - x_pop: {x_pop}')
 		'''
