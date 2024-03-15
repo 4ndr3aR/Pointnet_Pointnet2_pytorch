@@ -601,7 +601,8 @@ class get_loss(torch.nn.Module):
 			print(f'get_loss.forward() - pr.shape : {pr.shape}')
 			print(f'get_loss.forward() - tgt.shape: {tgt.shape}')
 
-		loss= F.mse_loss(pr, tgt.float())
+		#loss= F.mse_loss(pr, tgt.float())
+		loss = (pr-tgt).abs().sum()			# not even a MAE/L1Loss
 
 		'''
 		loss = 0
