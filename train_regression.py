@@ -26,7 +26,10 @@ from data_utils.ModelNetDataLoader import ModelNetDataLoader
 
 from data_utils.mnist_dataset    import MNIST3D,  create_3dmnist_dataloaders,  show_3d_image, get_random_sample
 from data_utils.curveml_dataset  import CurveML,  create_curveml_dataloaders,  show_one_batch
-from data_utils.symmetry_dataset import Symmetry, create_symmetry_dataloaders, show_one_batch
+#from data_utils.symmetry_dataset import Symmetry, create_symmetry_dataloaders, show_one_batch
+from data_utils.symmetry_dataset import create_symmetry_dataloaders 
+from src.model.losses.discrete_prediction_loss import calculate_loss
+from src.model.center_n_normals_net import LightingCenterNNormalsNet
 
 '''
 cmdlines:
@@ -299,7 +302,8 @@ def main(args):
             symmetry_path = Path('/mnt/btrfs-big/dataset/geometric-primitives-classification/symmetry-datasets/gz/symmetries-dataset-lemniscate-clean-10k')
         gt_columns = args.gt_columns if args.gt_columns is not None else 'label'
         log_string(f'Using column {gt_columns} as ground truth')
-        trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_columns=gt_columns, bs=args.batch_size, num_points=args.num_points, only_test_set=args.only_test_set, extension='.gz')
+        #trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, gt_columns=gt_columns, bs=args.batch_size, num_points=args.num_points, only_test_set=args.only_test_set, extension='.gz')
+        trainDataLoader, valDataLoader, testDataLoader = create_symmetry_dataloaders(symmetry_path, bs=args.batch_size, num_points=args.num_points, only_test_set=args.only_test_set, dataset_type='txt')
 
     log_string(f'trainDataLoader size (in batches): {len(trainDataLoader)}, valDataLoader size: {len(valDataLoader)}, testDataLoader size: {len(testDataLoader)}')
 
@@ -312,9 +316,16 @@ def main(args):
 
 
 
+
+
     '''MODEL LOADING'''
     num_class = args.num_classes
-    model = importlib.import_module(args.model)
+    model = None
+    if args.symmetry_dataset:
+        model = LightingCenterNNormalsNet(amount_of_normals_predicted=27, use_bn=False, print_losses=False)
+    else:
+        model = importlib.import_module(args.model)
+
     shutil.copy('./models/%s.py' % args.model, str(exp_dir))
     shutil.copy('models/pointnet2_utils.py', str(exp_dir))
     if args.mnist_dataset:
@@ -332,26 +343,41 @@ def main(args):
     y_range = [args.y_range_min, args.y_range_max] if args.y_range_min != -1. and args.y_range_max != -1. else None
     if y_range is not None:
         log_string(f'Received y_range: {y_range} with type: {type(y_range[0])} - {type(y_range[1])}')
-    regressor = model.get_model(num_class, normal_channel=args.use_normals, y_range=y_range)
+
+    if args.symmetry_dataset:
+        regressor = model
+    else:
+        regressor = model.get_model(num_class, normal_channel=args.use_normals, y_range=y_range)
 
     dataset = 'symmetry' if args.symmetry_dataset else 'curveml' if args.curveml_dataset else 'mnist'
-    criterion = model.get_loss(dataset=dataset, y_range=y_range, mat_diff_loss_scale=args.mat_diff_loss_scale, debug=True)
-    if args.y_range_min == -1. and args.y_range_max == -1.:
+
+    criterion = None
+    if args.symmetry_dataset:
+        criterion = None
+    else:
+        criterion = model.get_loss(dataset=dataset, y_range=y_range, mat_diff_loss_scale=args.mat_diff_loss_scale, debug=True)
+
+    if args.y_range_min == -1. and args.y_range_max == -1. and not args.symmetry_dataset:
         regressor.apply(inplace_relu)
 
     if not args.use_cpu:
         regressor = regressor.cuda()
-        criterion = criterion.cuda()
+        if criterion is not None:
+            criterion = criterion.cuda()
 
-    # take a look at what you're training...
-    one_batch = next(iter(trainDataLoader))
-    log_string(f'one_batch: {len(one_batch)} - {one_batch[0].shape}')
-    one_batch_data  = one_batch[0]
-    one_batch_label = one_batch[1]
-    input_data = torch.transpose(one_batch_data, 1, 2)
-    summary(regressor, input_data=input_data.cuda() if not args.use_cpu else input_data)
-    if args.show_one_batch:
-        show_one_batch([one_batch_data, one_batch_label])
+    if args.symmetry_dataset:
+        idxs, points, sym_planes, transforms = next(iter(trainDataLoader))
+        print(f'{points.shape = } - {sym_planes = }')
+    else:
+        # take a look at what you're training...
+        one_batch = next(iter(trainDataLoader))
+        log_string(f'one_batch: {len(one_batch)} - {one_batch[0].shape}')
+        one_batch_data  = one_batch[0]
+        one_batch_label = one_batch[1]
+        input_data = torch.transpose(one_batch_data, 1, 2)
+        summary(regressor, input_data=input_data.cuda() if not args.use_cpu else input_data)
+        if args.show_one_batch:
+            show_one_batch([one_batch_data, one_batch_label])
 
     try:
         checkpoint = torch.load(str(exp_dir) + '/checkpoints/best_model.pth')
@@ -410,31 +436,13 @@ def main(args):
                 regressor.list_target_to_cuda_float_tensor(target, cuda=(not args.use_cpu))		# because now target is a list of lists/np.arrays
                 if not args.use_cpu:
                     points = points.cuda()
-                '''
-                    for idx,tgt in enumerate(target):		# because now target is a list of lists/np.arrays
-                        print(f'cpu  target[{idx}]: {type(tgt)} -  {tgt}')
-                        target[idx] = torch.tensor(tgt).cuda()
-                        print(f'cuda target[{idx}]: {type(tgt)} -  {tgt}')
-                else:
-                    for idx,tgt in enumerate(target):		# because now target is a list of lists/np.arrays
-                        print(f'cpu  target[{idx}]: {type(tgt)} -  {tgt}')
-                        target[idx] = torch.tensor(tgt)
-                '''
 
-                '''
-                if args.y_range_min == -1. and args.y_range_max == -1.:
-                    loss = criterion(pred, target, trans_feat)
-                    pred_choice = pred.data.max(1)[1]
-                    correct = pred_choice.eq(target.long().data).cpu().sum()
-                    mean_correct.append(correct.item() / float(points.size()[0]))
-                else:
-                    loss = criterion(pred, target.float(), trans_feat)
-                '''
-                #print(f'pred  : {pred} - {type(pred)}')
-                #print(f'target: {target} - {type(target)}')
-
-            pred, trans_feat = regressor(points)
-            loss, mse_loss, mat_diff_loss = criterion(pred, target, trans_feat)
+            if args.symmetry_dataset:
+                torch.set_grad_enabled(True)
+                loss = model.training_step()
+            else:
+                pred, trans_feat = regressor(points)
+                loss, mse_loss, mat_diff_loss = criterion(pred, target, trans_feat)
 
             loss.backward()
             optimizer.step()

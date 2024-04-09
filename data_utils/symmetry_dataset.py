@@ -11,56 +11,38 @@ import torchvision
 
 #import cv2
 
+'''
 import multiprocessing				# for multiprocessing.cpu_count()
 
 import pgzip					# parallel gzip, waiting for python-lzma to support parallelization: https://github.com/python/cpython/pull/114954
 import lzma					# for xz compression
 import pickle
+'''
 
 from pathlib import Path
-from numpy import genfromtxt
+#from numpy import genfromtxt
 
 from torch.utils.data import Dataset, DataLoader, random_split
 import matplotlib.pyplot as plt
 
-from collections import Counter			# just to subtract lists of strings
+import sys 
+sys.path.insert(0, '..')
 
-from joblib import Parallel, delayed
+from src.dataset.preprocessing import Shrec2023Transform, UnitSphereNormalization, RandomSampler, ComposeTransform
+from src.dataset.shrec2023     import (SymmetryDataset,
+                                       SymmetryDataModule,
+                                       default_symmetry_dataset_collate_fn_list_sym)
+from src.dataset.preprocessing import *
+
+
+#from collections import Counter			# just to subtract lists of strings
+
+#from joblib import Parallel, delayed
 
 #import threading
 
-import pandas as pd
-pd.options.display.precision = 3
-
-'''
-import re
-import builtins
-from functools import wraps
-
-original_print = builtins.print
-
-def fprint(print_func, precision=2):
-    @wraps(print_func)
-    def wrapper(*args, **kwargs):
-        def repl(match):
-            float_number = float(match.group(1))
-            #ret = "{" + str(float_number) + ":." + str(precision) + "f}"
-            precision_term = "{:." + str(precision) + "f}"
-            ret = ''.join(precision_term.format(float_number).rjust(precision+3))
-            #original_print(ret)
-            return f"{ret}"
-        
-        new_args = []
-        for arg in args:
-            if isinstance(arg, str):
-                arg = re.sub(r'([-+]?\d*\.\d+([eE][-+]?\d+)?)', repl, arg)
-            new_args.append(arg)
-        
-        return print_func(*new_args, **kwargs)
-    return wrapper
-
-#builtins.print = fprint(print)
-'''
+#import pandas as pd
+#pd.options.display.precision = 3
 
 def to_precision(lst, precision=3, debug=False):
 	if debug:
@@ -93,55 +75,12 @@ def to_precision(lst, precision=3, debug=False):
 	if (isinstance(lst, torch.Tensor) and len(lst.shape) != 0) or (isinstance(lst, list) and len(lst) > 0):
 		if debug:
 			print('to_precision() - tensor')
-		#str_lst.append(', '.join(precision_term.format(lst).rjust(precision+3)))
-		#str_lst.append(', '.join(precision_term.format(float(x)).rjust(precision+3) for x in lst))
 		str_lst = '[' + ', '.join(precision_term.format(float(x)).rjust(precision+3) for x in lst) + '],\n'
-		'''
-		for elem in lst:
-			str_lst.append(', '.join(precision_term.format(float(elem)).rjust(precision+3)))
-		'''
 	else:
 		str_lst = ', '.join(precision_term.format(float(x)).rjust(precision+3) for x in lst)
 	if debug:
 		print(f'{str_lst = }')
-	'''
-	for sublist in lst:
-		for x in list(sublist):
-			print(f'{type(x) = } - {x = }')
-			print(f'{precision_term.format(x).rjust(precision+3) = }')
-		[print(type(x)) for x in sublist]
-		str_lst.append(', '.join([precision_term.format(float(x)).rjust(precision+3) for x in sublist]))
-	'''
 	return str(str_lst) # .replace('00', '0§0').replace('\'', '').replace('"', '').replace("'", "")
-'''
-def to_precision2(data, precision=2):
-	print(data)
-def to_precision(data, precision=2):
-	if isinstance(data, float):
-		return "{:.{}f}".format(data, precision) + ", "
-	elif isinstance(data, int):
-		return str(data) + ", "
-	elif isinstance(data, str):
-		return data + ", "
-	elif isinstance(data, (list, tuple)):
-		result = ""
-		for element in data:
-			result += to_precision(element, precision)
-		return '[' + result.rstrip(", ") + '], \n'
-	elif isinstance(data, (np.ndarray, np.matrix)):
-		result = ""
-		for row in data:
-			result += to_precision(row, precision)
-		return '((' + result.rstrip(", ") + ')), \n'
-	elif isinstance(data, dict):
-		result = ""
-		for key, value in data.items():
-			result += "{}: {} ".format(key, to_precision(value, precision))
-		return '{' + result.rstrip(", ") + '}, \n'
-	else:
-		return str(data)
-'''
-
 
 
 
@@ -193,13 +132,9 @@ def load_dataset(path, fname, debug=False):
 
 	return data
 
+'''
 class Symmetry(Dataset):
 	"""Symmetry dataset."""
-
-	'''
-     1	astroid
-     2	geom-petal
-	'''
 
 	NUM_CLASSIFICATION_CLASSES = 2
 	MAX_POINTS = 1024
@@ -273,11 +208,6 @@ class Symmetry(Dataset):
 		if isinstance(points, list):
 			points = points[0]			# TODO: remove me or I'll cause bugs!
 
-		'''
-		if debug:
-			print(f'1. __getitem__() idx: {idx} - {type(row) = } - {len(row) = } - {points.shape = } - {label = } - {split = } - {lbl = }')
-		points = np.hstack((points, np.zeros((points.shape[0], 1))))
-		'''
 		# The symmetry dataset already contains real 3D point clouds, so no need for the np.hstack as in the CurveML dataset...
 		if debug_verbose:
 			print(f'0. __getitem__() idx: {idx} - {type(row) = } - {type(points) = }')
@@ -396,7 +326,8 @@ class Symmetry(Dataset):
 
 	def items(self, idxs, debug=False):
 		return self.__getitems__(idxs, debug=debug)
-
+'''
+'''
 def show_one_batch(one_batch, debug=False):
 	if debug:
 		print(f'one_batch: {type(one_batch)}')
@@ -445,7 +376,8 @@ def load_and_describe_npz(file_path):
 def load_npz(fn):
     pts  = load_and_describe_npz(fn)['points']
     return pts
-
+'''
+"""
 def read_gt_file(gt_file, debug=False):
     '''
     Read a -sym.txt file with the format:
@@ -467,16 +399,6 @@ def read_gt_file(gt_file, debug=False):
     
     df.columns = ['type', 'popx', 'popy', 'popz', 'nx', 'ny', 'nz', 'rot'] # normals and points on plane (for planar symmetry) and rot for axial symmetry
     return df
-
-'''
-def joblib_test():
-	def process(i):
-		print(f'Running thread {i}')
-		return i * i
-    
-	results = Parallel(n_jobs=2)(delayed(process)(i) for i in range(10))
-	print(results)  # prints [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
-'''
 
 def read_symmetry_dataset(path, parallel=False, debug=False):
 	if parallel:
@@ -571,37 +493,6 @@ def parallel_read_symmetry_dataset(path, debug=False):
 	dataset = Parallel(n_jobs=16)(delayed(process)(idx,file,debug=debug) for idx, file in enumerate(ds_lst))
 	print(f'read_symmetry_dataset() - {len(dataset)} files processed - {type(dataset)}')
 
-	'''
-	#csv_files = Path(path).rglob('*.npz')				
-	for idx, file in enumerate(list(csv_files)):
-		if debug:
-			print(f'read_symmetry_dataset() - reading file: {file}')
-			print(f'read_symmetry_dataset() - in path     : {file.parents[0]}')
-		if file.is_file():
-			#points = genfromtxt(file, delimiter=',')
-			points = load_npz(file)
-			label  = file.parent.stem			# geom_petal
-			split  = file.parent.parent.stem		# test
-			gtfn   = file.parents[0] / (file.name[:-4] + '-sym.txt')
-			#tmpdf  = pd.DataFrame(columns=['label', 'fpath', 'points', 'gt'])
-			tmpdf  = dict()
-			tmpdf['label']  = label
-			tmpdf['split']  = split 
-			tmpdf['points'] = [points]
-			tmpdf['gt']     = read_gt_file(gtfn)
-
-			if counter % 1000 == 0:
-				print(f'read_symmetry_dataset() - {counter+1} files processed so far ({split} - {label} - {points.shape})')
-				#print(f'read_symmetry_dataset() - {idx} - {file} - {parmfn} - {tmpdf.shape} - {tmpdf}')
-				print(f'read_symmetry_dataset() - {idx} - {len(dataset)} - {dataset}')
-
-			dataset.append(tmpdf)
-
-			counter += 1
-
-	print(f'read_symmetry_dataset() - {counter} files read')
-	'''
-
 	none_counter = sum(x is None for x in dataset)
 	print(f'parallel_read_symmetry_dataset() - {ds_len} files read - dataset has {none_counter} None elements')
 	if debug:
@@ -625,53 +516,17 @@ def save_dataset(dataset, path, fname, parallel=False, also_pickle=False):
 		with lzma.open(dst_fn, 'wb') as fhandle:
 			pickle.dump(dataset, fhandle)
 	else:
-		'''
-		dst_fn = Path(path) / Path(str(fname) + '.xz')
-		print(f'Writing compressed dataset to: {dst_fn}...')
-		print(f'{type(dataset)} - {len(dataset)} - {dataset[:2]}')
-		ds = pd.DataFrame(dataset)
-		print(f'{type(ds)} - {len(ds)} - {ds[:2]}')
-		dataset2 = dict(ds)
-		print(f'{type(dataset2)} - {len(dataset2)}')
-		print(f'{type(dataset2)} - {len(dataset2)} - {dataset2}')
-		ds.head(100).to_csv(dst_fn, compression='xz')
-		#with lzma.open(dst_fn, 'wb') as fhandle:
-		#	pickle.dump(dataset, fhandle)
-		return
-		'''
-
-
-
 
 		dst_fn = Path(path) / Path(str(fname) + '.gz')
 		print(f'Parallel-writing compressed dataset to: {dst_fn}...')
 		n_threads = multiprocessing.cpu_count() * 2
 		block_sz  = 1024*1024*1024
-		'''
-		#s = "a big string..."
-		s = data[: (20 * (2 << 20))] #.decode(encoding='latin-1')
-		print(f'len(s) = {len(s)}')
-		print(f'type(s) = {type(s)}')
-		print(f's[:100] = {s[:100]}')
-		'''
 		
 		## Use current CPU thread count * 2 threads to compress.
 		## None or 0 means using all CPUs (default)
 		## Compression block size is set to 200MB
 		with pgzip.open(dst_fn, "wb", thread=n_threads, blocksize=block_sz) as fhandle:
 			pickle.dump(dataset, fhandle)
-		        #fw.write(s)
-
-		'''
-		with pgzip.open("test.txt.gz", "rb", thread=n_threads) as fr: 
-		        s2 = fr.read(len(s))
-		        print(f'{len(s)} == {len(s2)}')
-		        print(f's [100:200] = {s[100:200]}')
-		        print(f's2[100:200] = {s2[100:200]}')
-		        print(f's [:100] = {s[:100]}')
-		        print(f's2[:100] = {s2[:100]}')
-		        assert s2 == s
-		'''
 
 
 def read_and_save_dataset_partitions(dataset_path, output_path='./', parallel=False):
@@ -685,30 +540,44 @@ def read_and_save_dataset_partitions(dataset_path, output_path='./', parallel=Fa
 	save_dataset(train_dataset, output_path, 'train', also_pickle=False,    parallel=parallel)
 	del train_dataset
 	return #train_dataset, valid_dataset, test_dataset
+"""
 
-def create_symmetry_dataloaders(symmetry_path, bs, extension='.xz', gt_columns=None, num_points=1024, only_test_set=False, valid_and_test_sets=False):
+def create_symmetry_dataloaders(symmetry_path, bs, dataset_type='txt', num_points=14400, only_test_set=False, valid_and_test_sets=False):
 	train_dataset,    val_dataset,    test_dataset    = None, None, None
 	train_dataloader, val_dataloader, test_dataloader = None, None, None
+
+	scaler = UnitSphereNormalization()
+	sampler = RandomSampler(sample_size=1024, keep_copy=False)
+	# default_transform = ComposeTransform([scaler, sampler])
+	default_transform = scaler
 
 	print(f'create_symmetry_dataloaders() is loading dataset from: {symmetry_path}')
 
 	print('.', end='', flush=True)
-	test_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, max_points=num_points, partition='test', extension=extension)
+	#test_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, max_points=num_points, partition='test', extension=extension)
+	test_dataset = SymmetryDataset(data_source_path=Path(symmetry_path) / 'test', max_points=num_points, transform=default_transform, has_ground_truth=True, dataset_type=dataset_type)
 
 	if not only_test_set:
 		print('.', end='', flush=True)
-		val_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, max_points=num_points, partition='valid', extension=extension)
+		#val_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, max_points=num_points, partition='valid', extension=extension)
+		val_dataset   = SymmetryDataset(data_source_path=Path(symmetry_path) / 'valid', max_points=num_points, transform=default_transform, has_ground_truth=True, dataset_type=dataset_type)
 		print('.', end='', flush=True)
-		train_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, max_points=num_points, partition='train', extension=extension)		# keep this one as the last because it's pretty slow
+		#train_dataset = Symmetry(path=symmetry_path, gt_columns=gt_columns, max_points=num_points, partition='train', extension=extension)		# keep this one as the last because it's pretty slow
+		train_dataset = SymmetryDataset(data_source_path=Path(symmetry_path) / 'train', max_points=num_points, transform=default_transform, has_ground_truth=True, dataset_type=dataset_type)
+
+
 	else:
 		print(f'Warning: using only test set for dataloaders...')
 
 	print('. DONE!', flush=True)
 
+	COLLATE_FN  = default_symmetry_dataset_collate_fn_list_sym
+	NUM_WORKERS = 15
+
 	if not only_test_set:
-		train_dataloader = DataLoader(train_dataset, batch_size=bs, shuffle=True)
-		val_dataloader   = DataLoader(val_dataset,   batch_size=bs, shuffle=True)
-	test_dataloader = DataLoader(test_dataset,  batch_size=bs, shuffle=only_test_set)
+		train_dataloader = DataLoader(train_dataset, batch_size=bs, shuffle=True,  collate_fn=COLLATE_FN, num_workers=NUM_WORKERS)
+		val_dataloader   = DataLoader(val_dataset,   batch_size=bs, shuffle=False, collate_fn=COLLATE_FN, num_workers=NUM_WORKERS)
+	test_dataloader = DataLoader(test_dataset,  batch_size=bs, shuffle=only_test_set,  collate_fn=COLLATE_FN, num_workers=NUM_WORKERS)
 
 	if only_test_set:
 		train_dataloader = test_dataloader
@@ -732,11 +601,6 @@ if __name__ == '__main__':
 	test_load      = False
 	test_show      = False
 	test_one_batch = False
-
-	'''
-	joblib_test()
-	sys.exit()
-	'''
 
 	if test_read or test_dist_read:
 		print(f'Testing the read_symmetry_dataset() function...')
