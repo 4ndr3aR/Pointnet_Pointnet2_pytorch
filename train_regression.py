@@ -266,6 +266,11 @@ def main(args):
     log_dir = exp_dir.joinpath('logs/')
     log_dir.mkdir(exist_ok=True)
 
+    '''No sci-fi notation please!!1!'''
+    torch.set_printoptions  (linewidth=200)
+    torch.set_printoptions  (precision=3)
+    torch.set_printoptions  (sci_mode=False)
+
     '''LOG'''
     args = parse_args()
     logger.setLevel(logging.INFO)
@@ -367,7 +372,8 @@ def main(args):
 
     if args.symmetry_dataset:
         idxs, points, sym_planes, transforms = next(iter(trainDataLoader))
-        print(f'{points.shape = } - {sym_planes = }')
+        print(f'{points.shape = }')
+        print(f'{sym_planes   = }')
     else:
         # take a look at what you're training...
         one_batch = next(iter(trainDataLoader))
@@ -418,28 +424,36 @@ def main(args):
         regressor = regressor.train()
 
         scheduler.step()
-        for batch_id, (points, target) in tqdm(enumerate(trainDataLoader, 0), total=len(trainDataLoader), smoothing=0.9):
+        for batch_id, batch in tqdm(enumerate(trainDataLoader, 0), total=len(trainDataLoader), smoothing=0.9):
+            #if args.symmetry_dataset:
+            #    #idxs, points, sym_planes, transforms = batch
+            #    idxs, points, target, transforms = batch
+            #else:
+            points, target = None, None
+            if not args.symmetry_dataset:
+                points, target = batch
+
             optimizer.zero_grad()
 
-            points = points.data.numpy()
-            if not args.symmetry_dataset and not args.curveml_dataset:
-                points = provider.random_point_dropout(points)
-                points[:, :, 0:3] = provider.random_scale_point_cloud(points[:, :, 0:3])
-                points[:, :, 0:3] = provider.shift_point_cloud(points[:, :, 0:3])
-            points = torch.Tensor(points)
-            points = points.transpose(2, 1)
-
             if not args.symmetry_dataset:
+                points = points.data.numpy()
+                if not args.symmetry_dataset and not args.curveml_dataset:
+                    points = provider.random_point_dropout(points)
+                    points[:, :, 0:3] = provider.random_scale_point_cloud(points[:, :, 0:3])
+                    points[:, :, 0:3] = provider.shift_point_cloud(points[:, :, 0:3])
+                points = torch.Tensor(points)
+                points = points.transpose(2, 1)
                 if not args.use_cpu:
                     points, target = points.cuda(), torch.tensor(target).cuda().float()
-            else:
-                regressor.list_target_to_cuda_float_tensor(target, cuda=(not args.use_cpu))		# because now target is a list of lists/np.arrays
-                if not args.use_cpu:
-                    points = points.cuda()
+            #else:
+            #    regressor.list_target_to_cuda_float_tensor(target, cuda=(not args.use_cpu))		# because now target is a list of lists/np.arrays
+            #    if not args.use_cpu:
+            #        points = points.cuda()
 
             if args.symmetry_dataset:
                 torch.set_grad_enabled(True)
-                loss = model.training_step()
+                print(f'{points = }')
+                loss = model.training_step(batch=batch, batch_idx=batch_id)
             else:
                 pred, trans_feat = regressor(points)
                 loss, mse_loss, mat_diff_loss = criterion(pred, target, trans_feat)

@@ -44,6 +44,7 @@ class TNet(nn.Module):
         :return: y: Tensor of shape (batch_size, out_dim)
         """
         batch_size = x.size()[0]
+        #print(f'{x = }')
         x = torch.max(self.shared_mlps(x), dim=2).values
         x = self.linear(x)
         identity = Variable(
@@ -103,7 +104,9 @@ class PointNetEncoder(nn.Module):
         :return: Tensor of shape B x 1088 x N of features for each point.
                  The first 64 features are the local features, the next 1024 are global features.
         """
+        #print(f'{x = }')
         input_trans = self.input_transform(x)
+        print(f'{input_trans = }')
         input_trans = input_trans.reshape(-1, 3, 3)
 
         x0 = x.transpose(2, 1)

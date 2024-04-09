@@ -54,12 +54,20 @@ def calculate_loss_aux(
     :param y_true: K x 6
     :return:
     """
+
+    print(f'{points = }')
+    print(f'{y_pred = }')
+    print(f'{y_true = }')
+    print(f'{weights = }')
+
     m = y_pred.shape[0]
     confidences = y_pred[:, -1]
 
     # c_hat : One-Hot M
     # matched_y_pred : K x 7
     c_hat, matched_y_pred = get_optimal_assignment(points, y_pred, y_true, cost_matrix_method)
+    print(f'{c_hat = }')
+    print(f'{matched_y_pred = }')
 
     confidence_loss = nn.functional.binary_cross_entropy(confidences, c_hat) * weights[0]
 

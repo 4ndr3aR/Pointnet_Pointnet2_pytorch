@@ -16,7 +16,7 @@ if __name__ == "__main__":
 	from src.model.decoders.normal_prediction_head import NormalPredictionHead
 	from src.model.encoders.pointnet_encoder import PointNetEncoder
 	from src.model.losses.discrete_prediction_loss import calculate_loss
-	from src.model.losses.utils import calculate_cost_matrix_normals
+	from src.model.losses.utils import calculate_cost_matrix_normals, list_target_to_cuda_float_tensor
 	from src.model.postprocessing.utils import reverse_transformation
 else:
 	from src.metrics.mAP import get_mean_average_precision
@@ -25,7 +25,7 @@ else:
 	from src.model.decoders.normal_prediction_head import NormalPredictionHead
 	from src.model.encoders.pointnet_encoder import PointNetEncoder
 	from src.model.losses.discrete_prediction_loss import calculate_loss
-	from src.model.losses.utils import calculate_cost_matrix_normals
+	from src.model.losses.utils import calculate_cost_matrix_normals, list_target_to_cuda_float_tensor
 	from src.model.postprocessing.utils import reverse_transformation
 
 
@@ -50,6 +50,7 @@ class CenterNNormalsNet(nn.Module):
         batch_size = x.shape[0]
         normal_list = []
 
+        #print(f'{x = }')
         x = self.encoder(x)
 
         for head in self.normal_prediction_heads:
@@ -104,7 +105,9 @@ class LightingCenterNNormalsNet(torch.nn.Module):
 
     def training_step(self, batch, batch_idx, dataloader_idx=0):
         idxs, points, sym_planes, transforms = batch
-        points = torch.transpose(points, 1, 2).float()
+        points = torch.transpose(points, 1, 2).float().cuda()
+        sym_planes = list_target_to_cuda_float_tensor(sym_planes)
+        batch = (idxs, points, sym_planes, transforms)
 
         y_pred = self.net.forward(points)
         loss = calculate_loss(

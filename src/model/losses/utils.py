@@ -3,6 +3,16 @@ from scipy.optimize import linear_sum_assignment
 
 from src.utils.plane import SymPlane
 
+def list_target_to_cuda_float_tensor(target, cuda=True, debug=False):
+	for idx,tgt in enumerate(target):		# because now target is a list of lists/np.arrays
+		if debug:
+			print(f'cpu  target[{idx}]: {type(tgt)} -  {tgt}')
+		target[idx] = torch.tensor(tgt)
+		if cuda:
+			target[idx] = target[idx].cuda()
+		if debug:
+			print(f'cuda target[{idx}]: {type(target[idx])} -  {target[idx]}')
+
 
 def calculate_cost_matrix_normals(points, y_pred, y_true):
     """
