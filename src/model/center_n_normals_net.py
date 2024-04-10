@@ -75,7 +75,7 @@ class LightingCenterNNormalsNet(torch.nn.Module):
     def __init__(self,
                  amount_of_normals_predicted: int = 3,
                  confidence_loss_constant: float = 1.0,
-                 sde_loss_constant: float = 1.0,
+                 sde_loss_constant: float = 0.05,
                  distance_loss_constant: float = 1.0,
                  angle_loss_constant: float = 1.0,
                  cost_matrix_method: Callable = calculate_cost_matrix_normals,
@@ -138,25 +138,29 @@ class LightingCenterNNormalsNet(torch.nn.Module):
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
         idxs, points, sym_planes, transforms = batch
+        list_target_to_cuda_float_tensor(sym_planes)			# this work in-place, no return value
+        points = points.cuda()
+        batch = (idxs, points, sym_planes, transforms)
         points = torch.transpose(points, 1, 2).float()
 
         y_pred = self.net.forward(points)
-        loss = calculate_loss(
-            batch, y_pred,
-            self.cost_matrix_method, self.losses_weights,
-            self.print_losses
-        )
+        loss = calculate_loss(batch, y_pred, self.cost_matrix_method, self.losses_weights, self.print_losses)
 
         prediction = [(batch, y_pred)]
         mean_avg_precision = get_mean_average_precision(prediction)
         phc = get_phc(prediction)
 
+        print(f'Valid loss at step {batch_idx}: {loss}')
+        print(f'Valid  mAP at step {batch_idx}: {mean_avg_precision}')
+        print(f'Valid  PHC at step {batch_idx}: {phc}')
+        '''
         self.log("val_loss", loss, on_step=False, on_epoch=True,
                  prog_bar=True, sync_dist=True, batch_size=len(sym_planes))
         self.log("val_MAP", mean_avg_precision, on_step=False, on_epoch=True,
                  prog_bar=True, sync_dist=True, batch_size=len(sym_planes))
         self.log("val_PHC", phc, on_step=False, on_epoch=True,
                  prog_bar=True, sync_dist=True, batch_size=len(sym_planes))
+        '''
 
         return loss
 

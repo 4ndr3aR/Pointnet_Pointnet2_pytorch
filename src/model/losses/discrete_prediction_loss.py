@@ -14,12 +14,21 @@ def get_sde(points, pred_plane, true_plane, p=2):
     :param p:
     :return:
     """
+    print(f'pred_plane\n{pred_plane}')
+    print(f'true_plane\n{true_plane}')
     pred_plane = SymPlane.from_tensor(pred_plane)
     true_plane = SymPlane.from_tensor(true_plane, normalize=True)
-    return torch.norm(
-        true_plane.reflect_points(points) - pred_plane.reflect_points(points),
-        dim=0, p=p
-    ).mean()
+    print(f'pred_plane\n{pred_plane}')
+    print(f'true_plane\n{true_plane}')
+    ppr = pred_plane.reflect_points(points)
+    tpr = true_plane.reflect_points(points)
+    print(f'{len(ppr) = }')
+    print(f'{len(tpr) = }')
+    print(f'ppr\n{ppr}')
+    print(f'tpr\n{tpr}')
+    loss = torch.norm(tpr - ppr, dim=0, p=p).mean()
+    print(f'SDE loss: {loss}')
+    return loss
 
 
 def calculate_sde_loss(points, y_pred, y_true):
@@ -55,10 +64,10 @@ def calculate_loss_aux(
     :return:
     """
 
-    print(f'{points = }')
-    print(f'{y_pred = }')
-    print(f'{y_true = }')
-    print(f'{weights = }')
+    print(f'points\n{points}')
+    print(f'y_pred\n{y_pred}')
+    print(f'y_true\n{y_true}')
+    print(f'weights\n{weights}')
 
     m = y_pred.shape[0]
     confidences = y_pred[:, -1]
@@ -66,8 +75,8 @@ def calculate_loss_aux(
     # c_hat : One-Hot M
     # matched_y_pred : K x 7
     c_hat, matched_y_pred = get_optimal_assignment(points, y_pred, y_true, cost_matrix_method)
-    print(f'{c_hat = }')
-    print(f'{matched_y_pred = }')
+    print(f'c_hat\n{c_hat}')
+    print(f'matched_y_pred\n{matched_y_pred}')
 
     confidence_loss = nn.functional.binary_cross_entropy(confidences, c_hat.cuda()) * weights[0]
 
@@ -133,10 +142,10 @@ def calculate_loss(
             cost_matrix_method, weights,
             show_losses)
         if show_losses:
-            print(f"{[b_idx]} Points: {curr_points}")
-            print(f"{[b_idx]} Y_true: {curr_y_true}")
-            print(f"{[b_idx]} Y_pred: {curr_y_pred}")
-            print(f"{[b_idx]} Loss  : {losses[b_idx].item()}")
+            print(f"{[b_idx]} Points\n{curr_points}")
+            print(f"{[b_idx]} Y_true\n{curr_y_true}")
+            print(f"{[b_idx]} Y_pred\n{curr_y_pred}")
+            print(f"{[b_idx]} Loss: {losses[b_idx].item()}")
     #final_loss = loss / bs
     loss = torch.mean(losses)
     #loss = torch.sum(losses)

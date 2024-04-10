@@ -54,6 +54,12 @@ quick run:
 ./train_regression.py --symmetry_dataset --batch_size 5 --learning_rate 0.05 --gt_column cls type popx popy popz nx ny nz rot --num_classes 1 --model pointnet_regr --log_dir pointnet-nonormal-symmetry-bs5 --only_test_set
 
 
+
+New Symnet port from Pytorch Lightning:
+
+./train_regression.py --learning_rate 0.001 --num_points 14400 --symmetry_dataset --batch_size 1 --dataset_path /tmp/ramdrive/benchmark-14400 --log_dir symnet-bs1 &> /tmp/train-log-bs1-sdeloss-weight0.05.txt
+
+
 '''
 
 
@@ -135,6 +141,13 @@ def test(model, loader, num_class=40):
     return instance_acc, class_acc
 
 def test_regression(model, regressor, loader, num_class=1, dataset=None, y_range=None, debug=False):
+	if args.symmetry_dataset:
+		torch.set_grad_enabled(False)
+		for batch_id, batch in tqdm(enumerate(loader, 0), total=len(loader), smoothing=0.9):
+			#print(f'points\n{points}')
+			loss = model.validation_step(batch=batch, batch_idx=batch_id)
+		return loss, None, None
+
 	mse_total = torch.zeros(len(loader))
 	regressor = regressor.eval()
 	criterion = model.get_loss(dataset=dataset, y_range=y_range, mat_diff_loss_scale=args.mat_diff_loss_scale, debug=debug)
@@ -327,7 +340,7 @@ def main(args):
     num_class = args.num_classes
     model = None
     if args.symmetry_dataset:
-        model = LightingCenterNNormalsNet(amount_of_normals_predicted=27, use_bn=False, print_losses=False)
+        model = LightingCenterNNormalsNet(amount_of_normals_predicted=27, use_bn=False, print_losses=True)
     else:
         model = importlib.import_module(args.model)
 
@@ -374,7 +387,7 @@ def main(args):
         idxs, points, sym_planes, transforms = next(iter(trainDataLoader))
         print(f'{points.shape    = }')
         print(f'{len(sym_planes) = }')
-        print(f'{sym_planes      = }')
+        print(f'sym_planes\n{sym_planes}')
     else:
         # take a look at what you're training...
         one_batch = next(iter(trainDataLoader))
@@ -453,7 +466,7 @@ def main(args):
 
             if args.symmetry_dataset:
                 torch.set_grad_enabled(True)
-                print(f'{points = }')
+                print(f'points:\n{points}')
                 loss = model.training_step(batch=batch, batch_idx=batch_id)
             else:
                 pred, trans_feat = regressor(points)
@@ -475,7 +488,7 @@ def main(args):
 
 
         with torch.no_grad():
-            if y_range is not None or args.symmetry_dataset or args.curveml_dataset:
+            if y_range is not None or args.curveml_dataset:
                 mse_mean, mse_sum, mse = test_regression(model, regressor.eval(), valDataLoader, num_class=num_class, dataset=dataset, y_range=y_range)
 
                 if (mse < best_mse):
@@ -491,6 +504,8 @@ def main(args):
 
                 log_string(f'Valid MSE Loss: {mse} - Valid mean MSE Loss: {mse_mean} - Valid sum MSE Loss: {mse_sum}')
 
+            elif args.symmetry_dataset:
+                loss = test_regression(model, regressor.eval(), valDataLoader, num_class=num_class, dataset=dataset, y_range=y_range)
             else:
                 instance_acc, class_acc = test(regressor.eval(), valDataLoader, num_class=num_class)
 
