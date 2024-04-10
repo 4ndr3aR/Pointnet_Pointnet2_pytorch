@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from src.model.losses.utils import get_optimal_assignment, calculate_distance_loss, calculate_angle_loss, \
+from src.model.losses.utils import get_optimal_assignment, calculate_point_distance_loss, calculate_norm_distance_loss, calculate_angle_loss, \
     calculate_cost_matrix_normals
 from src.utils.plane import SymPlane
 
@@ -82,21 +82,23 @@ def calculate_loss_aux(
 
     sde_loss = calculate_sde_loss(points, matched_y_pred[:, 0:6], y_true) * weights[1]
 
-    distance_loss = calculate_distance_loss(matched_y_pred[:, 0:6], y_true) * weights[2]
+    p_distance_loss = calculate_point_distance_loss(matched_y_pred[:, 0:6], y_true) * weights[2]
+    n_distance_loss = calculate_norm_distance_loss (matched_y_pred[:, 0:6], y_true) * weights[2]*10
 
     angle_loss = calculate_angle_loss(matched_y_pred[:, 0:6], y_true) * weights[3]
 
-    total_loss = confidence_loss + sde_loss + angle_loss + distance_loss
+    total_loss = confidence_loss + sde_loss + angle_loss + p_distance_loss + n_distance_loss 
 
     if show_loss_log:
         torch.set_printoptions  (linewidth=200)
         torch.set_printoptions  (precision=3)
         torch.set_printoptions  (sci_mode=False)
-        print(f"Total_loss   : {total_loss.item():.2f}")
-        print(f"Conf_loss    : {(confidence_loss / total_loss).item():.2f} | {confidence_loss.item()}")
-        print(f"sde_loss     : {(sde_loss / total_loss).item():.2f} | {sde_loss.item()}")
-        print(f"angle_loss   : {(angle_loss / total_loss).item():.2f} | {angle_loss.item()}")
-        print(f"distance_loss: {(distance_loss / total_loss).item():.2f} | {distance_loss.item()}")
+        print(f"Total_loss  : {total_loss.item():.2f}")
+        print(f"Conf_loss   : {(confidence_loss / total_loss).item():.2f} | {confidence_loss.item()}")
+        print(f"sde_loss    : {(sde_loss / total_loss).item():.2f} | {sde_loss.item()}")
+        print(f"angle_loss  : {(angle_loss / total_loss).item():.2f} | {angle_loss.item()}")
+        print(f"p_dist_loss : {(p_distance_loss / total_loss).item():.2f} | {p_distance_loss.item()}")
+        print(f"n_dist_loss : {(n_distance_loss / total_loss).item():.2f} | {n_distance_loss.item()}")
         #print(f"mae_loss     : {(mae_loss / total_loss).item():.2f} | {mae_loss.item()}")
 
     return total_loss

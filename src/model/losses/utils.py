@@ -106,7 +106,7 @@ def calculate_angle_loss(y_pred, y_true):
     return cos_angle.min(dim=0).values.mean()
 
 
-def calculate_distance_loss(y_pred, y_true):
+def calculate_point_distance_loss(y_pred, y_true):
     """
 
     :param y_pred: M x 6
@@ -116,6 +116,30 @@ def calculate_distance_loss(y_pred, y_true):
     points_pred = y_pred[:, 3:6]
     points_true = y_true[:, 3:6]
 
+    print(f'point points_pred\n{points_pred}')
+    print(f'point points_true\n{points_true}')
+
     distances = torch.norm(points_true - points_pred, p=1, dim=0)
+
+    print(f'point distances\n{distances}')
+
+    return distances.mean()
+
+def calculate_norm_distance_loss(y_pred, y_true):
+    """
+
+    :param y_pred: M x 6
+    :param y_true: M x 6
+    :return:
+    """
+    points_pred = y_pred[:, 0:3]
+    points_true = y_true[:, 0:3]
+
+    print(f'norm  points_pred\n{points_pred}')
+    print(f'norm  points_true\n{points_true}')
+
+    distances = torch.norm(points_true - points_pred, p=1, dim=0)
+
+    print(f'norm  distances\n{distances}')
 
     return distances.mean()

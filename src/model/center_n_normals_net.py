@@ -62,10 +62,21 @@ class CenterNNormalsNet(nn.Module):
         predictions = torch.concat((normals, center), dim=2)
         reorder = torch.tensor([0, 1, 2, 4, 5, 6, 3], device=predictions.device).long()
 
+        torch.set_printoptions(threshold=10_000)
+        torch.set_printoptions(linewidth=100)
+        torch.set_printoptions(precision=3)
+        torch.set_printoptions(sci_mode=False)
+
+        print(f'{predictions.shape = }')
+        print(f'orig  predictions\n{predictions}')
         predictions = predictions[:, :, reorder]
+        print(f'{predictions.shape = }')
+        print(f'reord predictions\n{predictions}')
 
         predictions[:, :, -1] = torch.sigmoid(predictions[:, :, -1])
-        predictions[:, :, 0:3] = torch.nn.functional.normalize(predictions[:, :, 0:3].clone(), dim=2)
+        #predictions[:, :, 0:3] = torch.nn.functional.normalize(predictions[:, :, 0:3].clone(), dim=2)
+        #print(f'{predictions.shape = }')
+        #print(f'norm  predictions\n{predictions}')
 
         return predictions
 
