@@ -69,7 +69,7 @@ def calculate_loss_aux(
     print(f'{c_hat = }')
     print(f'{matched_y_pred = }')
 
-    confidence_loss = nn.functional.binary_cross_entropy(confidences, c_hat) * weights[0]
+    confidence_loss = nn.functional.binary_cross_entropy(confidences, c_hat.cuda()) * weights[0]
 
     sde_loss = calculate_sde_loss(points, matched_y_pred[:, 0:6], y_true) * weights[1]
 

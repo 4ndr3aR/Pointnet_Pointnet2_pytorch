@@ -267,7 +267,7 @@ def main(args):
     log_dir.mkdir(exist_ok=True)
 
     '''No sci-fi notation please!!1!'''
-    torch.set_printoptions  (linewidth=200)
+    torch.set_printoptions  (linewidth=100)
     torch.set_printoptions  (precision=3)
     torch.set_printoptions  (sci_mode=False)
 
@@ -372,8 +372,9 @@ def main(args):
 
     if args.symmetry_dataset:
         idxs, points, sym_planes, transforms = next(iter(trainDataLoader))
-        print(f'{points.shape = }')
-        print(f'{sym_planes   = }')
+        print(f'{points.shape    = }')
+        print(f'{len(sym_planes) = }')
+        print(f'{sym_planes      = }')
     else:
         # take a look at what you're training...
         one_batch = next(iter(trainDataLoader))

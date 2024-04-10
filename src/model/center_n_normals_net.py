@@ -104,28 +104,36 @@ class LightingCenterNNormalsNet(torch.nn.Module):
         return optimizer
 
     def training_step(self, batch, batch_idx, dataloader_idx=0):
+        #print(f'{type(batch) = }')
+        #print(f'{len(batch) = }')
         idxs, points, sym_planes, transforms = batch
-        points = torch.transpose(points, 1, 2).float().cuda()
-        sym_planes = list_target_to_cuda_float_tensor(sym_planes)
+        list_target_to_cuda_float_tensor(sym_planes)			# this work in-place, no return value
+        #print(f'{type(sym_planes) = }')
+        #print(f'{len(sym_planes) = }')
+        points = points.cuda()
         batch = (idxs, points, sym_planes, transforms)
-
+        points = torch.transpose(points, 1, 2).float().cuda()
+        #print(f'{type(batch) = }')
+        #print(f'{len(batch) = }')
+	
         y_pred = self.net.forward(points)
-        loss = calculate_loss(
-            batch, y_pred,
-            self.cost_matrix_method, self.losses_weights,
-            self.print_losses
-        )
+        loss = calculate_loss(batch, y_pred, self.cost_matrix_method, self.losses_weights, self.print_losses)
 
         prediction = [(batch, y_pred)]
         mean_avg_precision = get_mean_average_precision(prediction)
         phc = get_phc(prediction)
 
+        print(f'Train loss at step {batch_idx}: {loss}')
+        print(f'Train  mAP at step {batch_idx}: {mean_avg_precision}')
+        print(f'Train  PHC at step {batch_idx}: {phc}')
+        '''
         self.log("train_loss", loss, on_step=True, on_epoch=True,
-                 prog_bar=True, sync_dist=True, batch_size=len(sym_planes))
+             prog_bar=True, sync_dist=True, batch_size=len(sym_planes))
         self.log("train_MAP", mean_avg_precision, on_step=False, on_epoch=True,
-                 prog_bar=True, sync_dist=True, batch_size=len(sym_planes))
+             prog_bar=True, sync_dist=True, batch_size=len(sym_planes))
         self.log("train_PHC", phc, on_step=False, on_epoch=True,
-                 prog_bar=False, sync_dist=True, batch_size=len(sym_planes))
+             prog_bar=False, sync_dist=True, batch_size=len(sym_planes))
+        '''
         return loss
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
