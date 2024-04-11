@@ -83,7 +83,7 @@ def calculate_loss_aux(
     sde_loss = calculate_sde_loss(points, matched_y_pred[:, 0:6], y_true) * weights[1]
 
     p_distance_loss = calculate_point_distance_loss(matched_y_pred[:, 0:6], y_true) * weights[2]
-    n_distance_loss = calculate_norm_distance_loss (matched_y_pred[:, 0:6], y_true) * weights[2]*10
+    n_distance_loss = calculate_norm_distance_loss (matched_y_pred[:, 0:6], y_true) * weights[2] / 10.
 
     angle_loss = calculate_angle_loss(matched_y_pred[:, 0:6], y_true) * weights[3]
 
