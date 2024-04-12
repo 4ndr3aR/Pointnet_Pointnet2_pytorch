@@ -21,23 +21,26 @@ def calculate_cost_matrix_normals(points, y_pred, y_true):
     :param y_true: M x 6
     :return: K x M
     """
+    """
     print(f'{y_pred.shape = }')
     print(f'{y_pred = }')
     print(f'{y_true.shape = }')
     print(f'{y_true = }')
+    """
     normals_pred = torch.nn.functional.normalize(y_pred[:, 0:3])
     normals_true = torch.nn.functional.normalize(y_true[:, 0:3])
+    """
     print(f'{normals_pred.shape = }')
     print(f'{normals_pred = }')
     print(f'{normals_true.shape = }')
     print(f'{normals_true = }')
+    """
 
     return 1 - torch.abs(normals_true @ normals_pred.T)
 
 
 def calculate_cost_matrix_sde(points, y_pred, y_true):
     """
-
     :param points: N x 3
     :param y_pred: K x 7
     :param y_true: M x 6
@@ -86,10 +89,10 @@ def get_optimal_assignment(points, y_pred, y_true, method):
     :return:
     """
     m = y_pred.shape[0]
-    print(f'{method = }')
+    #print(f'{method = }')
     cost_matrix = method(points, y_pred.detach().clone(), y_true)
-    print(f'{cost_matrix.shape = }')
-    print(f'{cost_matrix = }')
+    #print(f'{cost_matrix.shape = }')
+    #print(f'{cost_matrix = }')
     row_id, col_id = linear_sum_assignment(cost_matrix.cpu().detach().numpy())
     c_hat = create_onehot(row_id, m, device=points.device)
     y_pred = y_pred[row_id, :]
@@ -127,8 +130,10 @@ def calculate_point_distance_loss(y_pred, y_true):
     points_pred = y_pred[:, 3:6]
     points_true = y_true[:, 3:6]
 
-    print(f'point points_pred\n{points_pred}')
-    print(f'point points_true\n{points_true}')
+    #print(f'point points_pred\n{points_pred}')
+    #print(f'point points_true\n{points_true}')
+    print(f'point {points_pred.shape}')
+    print(f'point {points_true.shape}')
 
     distances = torch.norm(points_true - points_pred, p=1, dim=0)
 
