@@ -340,7 +340,14 @@ def main(args):
     num_class = args.num_classes
     model = None
     if args.symmetry_dataset:
-        model = LightingCenterNNormalsNet(amount_of_normals_predicted=27, use_bn=False, print_losses=True)
+       model = LightingCenterNNormalsNet(amount_of_normals_predicted=27, use_bn=False, print_losses=True)
+       print(f'Building model: LightingCenterNNormalsNet')
+       #if args.model is not None:
+       #    model = importlib.import_module(args.model)
+       #    print(f'Building model: {args.model}')
+       #else:
+       #    model = LightingCenterNNormalsNet(amount_of_normals_predicted=27, use_bn=False, print_losses=True)
+       #    print(f'Building model: LightingCenterNNormalsNet')
     else:
         model = importlib.import_module(args.model)
 

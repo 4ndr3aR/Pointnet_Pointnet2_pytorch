@@ -25,7 +25,12 @@ class STN3d(nn.Module):
         self.bn5 = nn.BatchNorm1d(256)
 
     def forward(self, x):
-        batchsize = x.size()[0]
+        batchsize = x.size()[0] # 14400,3,bs -> bs,3,14400
+        #print(f'STN3d.forward() a {x.shape = }')
+        if True and False:
+            print(f'STN3d.forward() b {x.shape = }')
+            x = x.permute(2, 1, 0) # bs,3,14400
+            print(f'STN3d.forward() c {x.shape = }')
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
@@ -102,7 +107,7 @@ class PointNetEncoder(nn.Module):
         #self.counter = 0
 
     def forward(self, x):
-        #print(f'x: {x.shape} - {type(x)} - {x.size()}')
+        print(f'x: {x.shape} - {type(x)} - {x.size()}')
         B, D, N = x.size()
         trans = self.stn(x)
         x = x.transpose(2, 1)

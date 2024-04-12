@@ -14,7 +14,8 @@ if __name__ == "__main__":
 	from src.metrics.phc import get_phc
 	from src.model.decoders.center_prediction_head import CenterPredictionHead
 	from src.model.decoders.normal_prediction_head import NormalPredictionHead
-	from src.model.encoders.pointnet_encoder import PointNetEncoder
+	#from src.model.encoders.pointnet_encoder import PointNetEncoder
+	from models.pointnet_utils import PointNetEncoder
 	from src.model.losses.discrete_prediction_loss import calculate_loss
 	from src.model.losses.utils import calculate_cost_matrix_normals, list_target_to_cuda_float_tensor
 	from src.model.postprocessing.utils import reverse_transformation
@@ -23,11 +24,91 @@ else:
 	from src.metrics.phc import get_phc
 	from src.model.decoders.center_prediction_head import CenterPredictionHead
 	from src.model.decoders.normal_prediction_head import NormalPredictionHead
-	from src.model.encoders.pointnet_encoder import PointNetEncoder
+	#from src.model.encoders.pointnet_encoder import PointNetEncoder
+	from models.pointnet_utils import PointNetEncoder
 	from src.model.losses.discrete_prediction_loss import calculate_loss
 	from src.model.losses.utils import calculate_cost_matrix_normals, list_target_to_cuda_float_tensor
 	from src.model.postprocessing.utils import reverse_transformation
 
+
+class CenterNNormalsNetWithFeats(nn.Module):
+    def __init__(
+            self,
+            amount_of_normals_predicted: int = 3,
+            use_bn=False
+    ):
+        super().__init__()
+        self.use_bn = use_bn
+        self.h = amount_of_normals_predicted
+        self.channel = 3
+
+        #self.encoder = PointNetEncoder(use_bn=self.use_bn)
+        self.encoder = PointNetEncoder(global_feat=True, feature_transform=True, channel=self.channel)
+        self.normal_prediction_heads = nn.ModuleList(
+            [NormalPredictionHead(use_bn=self.use_bn) for _ in range(self.h)]
+        )
+
+        self.center_prediction_head = CenterPredictionHead(use_bn=self.use_bn)
+
+    def forward(self, x):
+        print(f'BEGIN FORWARD ##############################')
+        print(f'############################################')
+        print(f'############################################')
+        batch_size = x.shape[0] # bs,3,14400
+        #print(f'CenterNNormalsNetWithFeats.forward() a {x.shape = }')
+        if True and False:
+            #x = x.transpose(2, 1)
+            print(f'CenterNNormalsNetWithFeats.forward() b {x.shape = }')
+            x = x.permute(2, 1, 0) # 14400,3,bs
+            print(f'CenterNNormalsNetWithFeats.forward() c {x.shape = }')
+        normal_list = []
+
+        #print(f'{x = }')
+        #x = self.encoder(x)
+        x, trans, trans_feat = self.encoder(x) # 14400,1024 - 14400,3,3 - 14400,64,64
+        if True and False:
+            print(f'{type(x) = }')
+            print(f'{len(x) = }')
+            print(f'{x.shape = }')
+            print(f'--------------------------------------------------------')
+            print(f'--------------------------------------------------------')
+            print(f'--------------------------------------------------------')
+            print(f'--------------------------------------------------------')
+            print(f'--------------------------------------------------------')
+            for idx, x_elem in enumerate(x):
+                print(f'[{idx}] - {type(x_elem) = }')
+                print(f'[{idx}] - {len(x_elem) = }')
+                print(f'[{idx}] - {x_elem.shape = }')
+
+        for head in self.normal_prediction_heads:
+            normal_list.append(head(x))
+
+        center = self.center_prediction_head(x).unsqueeze(dim=1).repeat(1, self.h, 1)
+        normals = torch.vstack(normal_list).view(batch_size, self.h, 4)  # Normal (3) + Confidence(1)
+
+        predictions = torch.concat((normals, center), dim=2)
+        reorder = torch.tensor([0, 1, 2, 4, 5, 6, 3], device=predictions.device).long()
+
+        torch.set_printoptions(threshold=10_000)
+        torch.set_printoptions(linewidth=100)
+        torch.set_printoptions(precision=3)
+        torch.set_printoptions(sci_mode=False)
+
+        print(f'{predictions.shape = }')
+        print(f'orig  predictions\n{predictions}')
+        predictions = predictions[:, :, reorder]
+        print(f'{predictions.shape = }')
+        print(f'reord predictions\n{predictions}')
+
+        predictions[:, :, -1] = torch.sigmoid(predictions[:, :, -1])
+        #predictions[:, :, 0:3] = torch.nn.functional.normalize(predictions[:, :, 0:3].clone(), dim=2)
+        #print(f'{predictions.shape = }')
+        #print(f'norm  predictions\n{predictions}')
+        print(f'§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§')
+        print(f'§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§')
+        print(f'END FORWARD§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§')
+
+        return predictions, trans_feat
 
 class CenterNNormalsNet(nn.Module):
     def __init__(
@@ -104,7 +185,8 @@ class LightingCenterNNormalsNet(torch.nn.Module):
             angle_loss_constant,
         ])
 
-        self.net = CenterNNormalsNet(
+        #self.net = CenterNNormalsNet(
+        self.net = CenterNNormalsNetWithFeats(
             amount_of_normals_predicted=amount_of_normals_predicted,
             use_bn=self.use_bn
         )
@@ -127,8 +209,8 @@ class LightingCenterNNormalsNet(torch.nn.Module):
         #print(f'{type(batch) = }')
         #print(f'{len(batch) = }')
 	
-        y_pred = self.net.forward(points)
-        loss = calculate_loss(batch, y_pred, self.cost_matrix_method, self.losses_weights, self.print_losses)
+        y_pred, trans_feat = self.net.forward(points)
+        loss = calculate_loss(batch, y_pred, self.cost_matrix_method, weights=self.losses_weights, trans_feat=trans_feat, show_losses=self.print_losses)
 
         prediction = [(batch, y_pred)]
         mean_avg_precision = get_mean_average_precision(prediction)
@@ -154,8 +236,8 @@ class LightingCenterNNormalsNet(torch.nn.Module):
         batch = (idxs, points, sym_planes, transforms)
         points = torch.transpose(points, 1, 2).float()
 
-        y_pred = self.net.forward(points)
-        loss = calculate_loss(batch, y_pred, self.cost_matrix_method, self.losses_weights, self.print_losses)
+        y_pred, trans_feat = self.net.forward(points)
+        loss = calculate_loss(batch, y_pred, self.cost_matrix_method, weights=self.losses_weights, trans_feat=trans_feat, show_losses=self.print_losses)
 
         prediction = [(batch, y_pred)]
         mean_avg_precision = get_mean_average_precision(prediction)
