@@ -240,7 +240,7 @@ def test_regression(model, regressor, loader, num_class=1, dataset=None, y_range
 	return mse_mean, mse_sum, mse
 
 
-def save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=0., class_acc=0., mse=0., mse_mean=0., mse_sum=0.):
+def save_model(best_epoch, regressor, optimizer, checkpoints_dir, train_loss=0., valid_loss=0., instance_acc=0., class_acc=0., mse=0., mse_mean=0., mse_sum=0.):
 	logger.info('Saving model...')
 	savepath = str(checkpoints_dir) + '/best_model.pth'
 	log_string('Saving at %s' % savepath)
@@ -248,6 +248,8 @@ def save_model(best_epoch, regressor, optimizer, checkpoints_dir, instance_acc=0
 		'epoch': best_epoch,
 		'instance_acc': instance_acc,
 		'class_acc': class_acc,
+		'train_loss': train_loss,
+		'valid_loss': valid_loss,
 		'mse': mse,
 		'mse_mean': mse_mean,
 		'mse_sum': mse_sum,
@@ -436,6 +438,8 @@ def main(args):
     best_mse_mean     = 1.e12
     best_mse_sum      = 1.e12
     best_mse          = 1.e12
+    best_train_loss   = 1.e12
+    best_valid_loss   = 1.e12
 
     '''TRANING'''
     logger.info('Start training...')
@@ -485,7 +489,10 @@ def main(args):
 
             if args.wandb:
                 if global_step % 10 == 0:
-                    wandb.log({"loss": loss, "mse_loss": mse_loss, "mat_diff_loss": mat_diff_loss})
+                    if args.symmetry_dataset:
+                        wandb.log({"train loss": loss})
+                    else:
+                        wandb.log({"loss": loss, "mse_loss": mse_loss, "mat_diff_loss": mat_diff_loss})
 
         if args.y_range_min == -1. and args.y_range_max == -1.:
             train_instance_acc = np.mean(mean_correct)
@@ -512,7 +519,14 @@ def main(args):
                 log_string(f'Valid MSE Loss: {mse} - Valid mean MSE Loss: {mse_mean} - Valid sum MSE Loss: {mse_sum}')
 
             elif args.symmetry_dataset:
-                loss = test_regression(model, regressor.eval(), valDataLoader, num_class=num_class, dataset=dataset, y_range=y_range)
+                loss, _, _ = test_regression(model, regressor.eval(), valDataLoader, num_class=num_class, dataset=dataset, y_range=y_range)
+
+                #print(f'{loss = }')
+
+                if (loss < best_valid_loss):
+                    best_epoch      = epoch + 1
+                    best_valid_loss = loss
+                    save_model(best_epoch, regressor, optimizer, checkpoints_dir, train_loss=0, valid_loss=loss)
             else:
                 instance_acc, class_acc = test(regressor.eval(), valDataLoader, num_class=num_class)
 
